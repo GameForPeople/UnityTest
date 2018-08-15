@@ -139,6 +139,9 @@ DWORD WINAPI WorkerThread(LPVOID arg)
 	int retVal{};
 	HANDLE hcp = (HANDLE)arg;
 
+	int recvType{};
+	int sendType{};
+
 	while (7)
 	{
 		//비동기 입출력 기다리기
@@ -160,9 +163,11 @@ DWORD WINAPI WorkerThread(LPVOID arg)
 		int addrLength = sizeof(clientAddr);
 		getpeername(ptr->sock, (SOCKADDR *)&clientAddr, &addrLength);
 
-		//비동기 입출력 결과 확인
+		//비동기 입출력 결과 확인 // 아무것도 안보낼 때는, 해당 클라이언트 접속에 문제가 생긴것으로 판단, 닫아버리겠다!
 		if (retVal == 0 || cbTransferred == 0)
 		{
+			std::cout << "DEBUG - A" << std::endl;
+
 			if (retVal == 0)
 			{
 				DWORD temp1, temp2;
@@ -170,6 +175,7 @@ DWORD WINAPI WorkerThread(LPVOID arg)
 				err_display((char *)"WSAGetOverlappedResult()");
 			}
 			closesocket(ptr->sock);
+
 			printf("[TCP 서버] 클라이언트 종료 : IP 주소 =%s, 포트 번호 =%d\n",
 				inet_ntoa(clientAddr.sin_addr), ntohs(clientAddr.sin_port));
 			delete ptr;
@@ -179,20 +185,30 @@ DWORD WINAPI WorkerThread(LPVOID arg)
 		// 데이터 전송량 갱신
 		if (ptr->recvBytes == 0)
 		{
+			std::cout << "DEBUG - B" << std::endl;
+
+			//cbTransferred는 받은 데이터의 크기를 뜻함!! --> 한 글자(영어, 숫자, 공백)에 1byte, (한글)2byte
 			ptr->recvBytes = cbTransferred;
 			ptr->sendBytes = 0;
 
+
 			// 받은 데이터 출력
 			ptr->buf[ptr->recvBytes] = '\0';
-			printf(" [TCP %s :%d] %s\n", inet_ntoa(clientAddr.sin_addr), ntohs(clientAddr.sin_port), ptr->buf);
+			//printf(" [TCP %s :%d] %s\n", inet_ntoa(clientAddr.sin_addr), ntohs(clientAddr.sin_port), ptr->buf);
+			std::cout << "[Debug] : 전송된 Size : "<< cbTransferred << "  내용 :  " << ptr->buf << std::endl;
 		}
 		else
 		{
+			std::cout << "DEBUG - C" << std::endl;
+
 			ptr->sendBytes += cbTransferred;
+
 		}
 
 		if (ptr->recvBytes > ptr->sendBytes) 
 		{
+			std::cout << "DEBUG - D" << std::endl;
+
 			// 데이터 보내기
 			ZeroMemory(&ptr->overlapped, sizeof(ptr->overlapped));
 			ptr->wsabuf.buf = ptr->buf + ptr->sendBytes;
@@ -217,6 +233,8 @@ DWORD WINAPI WorkerThread(LPVOID arg)
 				}
 				continue;
 			}
+
+
 		}
 		else {
 			ptr->recvBytes = 0;
@@ -246,6 +264,9 @@ DWORD WINAPI WorkerThread(LPVOID arg)
 				}
 				continue;
 			}
+
+			std::cout << "DEBUG - E" << std::endl;
+
 		}
 	}
 };

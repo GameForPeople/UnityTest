@@ -24,8 +24,8 @@ int main(int argc, char * argv[])
 #pragma region [Load UserData]
 
 	std::ifstream inFile("UserData.txt", std::ios::in);
-	std::string ID;
 	
+	std::string ID;
 	int PW, winCount, loseCount, Money;
 	int userDataCount{};
 
@@ -37,28 +37,18 @@ int main(int argc, char * argv[])
 
 		userData.emplace_back(ID, PW, winCount, loseCount, Money);
 	}
-
+	
 	inFile.close();
 
 	std::cout << "  - UserData Load Complete! " << std::endl << std::endl;
 
 
-	for (auto i : userData) 
-	{
-		std::cout << i.GetID() << " " << i.GetPW() << " " << i.GetWinCount() << " " << i.GetLoseCount() << "  " << i.GetMoney() << std::endl;
-	}
+	//for (auto i : userData) 
+	//{
+	//	std::cout << i.GetID() << " " << i.GetPW() << " " << i.GetWinCount() << " " << i.GetLoseCount() << "  " << i.GetMoney() << std::endl;
+	//}
 
 #pragma endregion
-
-	userData.emplace_back((std::string)"abcd", 1541, 0, 100, 3000 );
-
-	isSaveOn = true;
-
-	for (auto i : userData)
-	{
-		std::cout << i.GetID() << " " << i.GetPW() << " " << i.GetWinCount() << " " << i.GetLoseCount() << "  " << i.GetMoney() << std::endl;
-	}
-
 
 #pragma region [ 윈속 초기화 및 입출력 완료 포트 생성 ]
 	//윈속 초기화
@@ -122,7 +112,7 @@ int main(int argc, char * argv[])
 
 #pragma endregion
 
-	printf("  - Dedi server activated!\n\n");
+	printf("  - Dedicated server activated!\n\n");
 
 #pragma region [ Thread Run! Accept and Save UserData ]
 	SOCKET clientSocket;
@@ -184,12 +174,13 @@ int main(int argc, char * argv[])
 	}
 #pragma endregion
 
-#pragma region [ plzDoNotQuit! ]
+#pragma region [ Destroy() && plzDoNotQuit! ]
 	char plzDoNotQuit{};
 	std::cin >> plzDoNotQuit;
 	
-	
-	WSACleanup;
+	closesocket(listenSocket);
+	WSACleanup();
+
 	return 0;
 #pragma endregion
 }
