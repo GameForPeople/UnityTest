@@ -50,6 +50,16 @@ int main(int argc, char * argv[])
 
 #pragma endregion
 
+	userData.emplace_back((std::string)"abcd", 1541, 0, 100, 3000 );
+
+	isSaveOn = true;
+
+	for (auto i : userData)
+	{
+		std::cout << i.GetID() << " " << i.GetPW() << " " << i.GetWinCount() << " " << i.GetLoseCount() << "  " << i.GetMoney() << std::endl;
+	}
+
+
 #pragma region [ 윈속 초기화 및 입출력 완료 포트 생성 ]
 	//윈속 초기화
 	WSADATA wsa;
@@ -206,7 +216,7 @@ DWORD WINAPI SaveUserDate(LPVOID arg) {
 			}
 			outFile.close();
 
-			std::cout << "[ System - UserDataSave ]" << std::endl;
+			std::cout << "[ System(Server Core) - UserDataSave ]" << std::endl;
 			isSaveOn = false;
 			Sleep(2000);
 		}
