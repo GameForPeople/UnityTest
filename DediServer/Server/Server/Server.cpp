@@ -40,7 +40,13 @@ int main(int argc, char * argv[])
 
 	inFile.close();
 
-	std::cout << "  - UserData Load Complete! " << std::endl;
+	std::cout << "  - UserData Load Complete! " << std::endl << std::endl;
+
+
+	for (auto i : userData) 
+	{
+		std::cout << i.GetID() << " " << i.GetPW() << " " << i.GetWinCount() << " " << i.GetLoseCount() << "  " << i.GetMoney() << std::endl;
+	}
 
 #pragma endregion
 
