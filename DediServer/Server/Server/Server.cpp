@@ -232,6 +232,7 @@ DWORD WINAPI WorkerThread(LPVOID arg)
 
 	while (7)
 	{
+		std::cout << "i'm wait Thread" << std::endl;
 
 #pragma region [ Wait For Thread ]
 		//비동기 입출력 기다리기
@@ -250,7 +251,7 @@ DWORD WINAPI WorkerThread(LPVOID arg)
 #pragma endregion
 
 #pragma region [ Get Socket and error Exception ]
-		std::cout << "newThread Fire!" << std::endl;
+		std::cout << "new Thread Fire!!" << std::endl;
 
 		// 할당받은 소켓 즉! 클라이언트 정보 얻기
 		SOCKADDR_IN clientAddr;
@@ -279,10 +280,43 @@ DWORD WINAPI WorkerThread(LPVOID arg)
 
 #pragma endregion
 
-		if (ptr->isRecvTrue)
+		if (ptr->bufferProtocol == -1)
+		{
+			ptr->bufferProtocol = 0;
+			std::cout << "ptr->bufferProtocol == -1" << std::endl;
+
+			ptr->wsabuf.buf = ptr->buf;
+			ptr->wsabuf.len = BUF_SIZE;
+
+			// 비동기 입출력의 시작
+			DWORD flags = 0;
+			DWORD recvBytes{};
+
+			retVal = WSARecv(
+				clientSocket, // 클라이언트 소켓
+				&ptr->wsabuf, // 읽을 데이터 버퍼의 포인터
+				1,			 // 데이터 입력 버퍼의 개수
+				&recvBytes,  // recv 결과 읽은 바이트 수, IOCP에서는 비동기 방식으로 사용하지 않으므로 nullPtr를 넘겨도 무방
+				&flags,		 // recv에 사용될 플래그
+				&ptr->overlapped, // overlapped구조체의 포인터
+				NULL			// IOCP에서는 사용하지 않으므로 NULL, nullptr넘겨도 무방
+			);
+
+			if (retVal == SOCKET_ERROR)
+			{
+				if (WSAGetLastError() != ERROR_IO_PENDING)
+				{
+					err_display((char *)"WSARecv()");
+				}
+
+				continue;
+			}
+		}
+		else if (ptr->isRecvTrue)
 		{
 			if (ptr->bufferProtocol == 0) {
 				recvType = (int&)(ptr->buf);
+				std::cout << "ptr->bufferProtocol == 0 , recvType == "<< recvType << std::endl;
 
 				if (recvType == DEMAND_LOGIN) {
 					ptr->bufferProtocol = DEMAND_LOGIN;
@@ -533,11 +567,12 @@ DWORD WINAPI WorkerThread(LPVOID arg)
 		{
 			if (ptr->bufferProtocol == PERMIT_LOGIN)
 			{
-				ptr->bufferProtocol = 0;
-				ptr->isRecvTrue = 0;
+				std::cout << "ptr->bufferProtocol == PERMIT_LOGIN" << std::endl;
+				ptr->bufferProtocol = -1;
+				ptr->isRecvTrue = true;
 
 				ZeroMemory(&ptr->overlapped, sizeof(ptr->overlapped));
-				memcpy(ptr->buf, (char*)&(ptr->dataBuffer), sizeof(PermitLoginStruct));
+				memcpy(ptr->buf, (char*)(ptr->dataBuffer), sizeof(PermitLoginStruct));
 				ptr->dataSize = sizeof(PermitLoginStruct);
 
 				delete (ptr->dataBuffer);
@@ -559,11 +594,12 @@ DWORD WINAPI WorkerThread(LPVOID arg)
 			}
 			else if (ptr->bufferProtocol == FAIL_LOGIN)
 			{
-				ptr->bufferProtocol = 0;
-				ptr->isRecvTrue = 0;
+				std::cout << "ptr->bufferProtocol == FAIL_LOGIN" << std::endl;
+				ptr->bufferProtocol = -1;
+				ptr->isRecvTrue = true;
 
 				ZeroMemory(&ptr->overlapped, sizeof(ptr->overlapped));
-				memcpy(ptr->buf, (char*)&(ptr->dataBuffer), sizeof(FailLoginStruct));
+				memcpy(ptr->buf, (char*)(ptr->dataBuffer), sizeof(FailLoginStruct));
 				ptr->dataSize = sizeof(FailLoginStruct);
 
 				delete (ptr->dataBuffer);
@@ -583,10 +619,7 @@ DWORD WINAPI WorkerThread(LPVOID arg)
 					continue;
 				}
 			}
-
-
 		}
-
 		// 데이터 전송량 갱신
 		/*
 		if (ptr->recvBytes == 0)
