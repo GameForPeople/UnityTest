@@ -228,11 +228,10 @@ DWORD WINAPI WorkerThread(LPVOID arg)
 
 	int retVal{};
 	int recvType{};
-	int sendType{};
 
 	while (7)
 	{
-		std::cout << "i'm wait Thread" << std::endl;
+		std::cout << "0";
 
 #pragma region [ Wait For Thread ]
 		//비동기 입출력 기다리기
@@ -251,7 +250,7 @@ DWORD WINAPI WorkerThread(LPVOID arg)
 #pragma endregion
 
 #pragma region [ Get Socket and error Exception ]
-		std::cout << "new Thread Fire!!" << std::endl;
+		std::cout << "1" << std::endl;
 
 		// 할당받은 소켓 즉! 클라이언트 정보 얻기
 		SOCKADDR_IN clientAddr;
@@ -352,14 +351,18 @@ DWORD WINAPI WorkerThread(LPVOID arg)
 						std::cout << "디맨드 로그인 바로 받아버렸다...짜피 다음 틱에서 처리해줄걸?? " << std::endl;
 					}
 				}
+				else
+				{
+					std::cout << "Not! Defined recvType Error" << std::endl;
+					std::cout << "This Thread Down!" << std::endl;
+				}
 			}
 			else if (ptr->bufferProtocol == DEMAND_LOGIN) {
 
 				DemandLoginStruct demandLogin = (DemandLoginStruct&)(ptr->buf);
 				std::cout << "아이디 비밀번호를 입력 받았습니다. ID:  " << demandLogin.ID << "  PW : " << demandLogin.PW << "  type : " << demandLogin.type << std::endl;
-				// 1일때 로그인 없는 아이디, 2일때 로그인 잘못된 비밀번호, 3일때 이미 로그인한 아이디, 4일때 회원가입 중복된 아이디! protocol Sync plz!  // 5일때는 정상??
 				
-				int failReason = 0;
+				int failReason = 1;
 
 				if (demandLogin.type == 1) {
 					int winRate{};
@@ -368,16 +371,20 @@ DWORD WINAPI WorkerThread(LPVOID arg)
 
 					for (auto &i : userData)
 					{
-						if ( i.GetID().compare(demandLogin.ID))
+						if (i.GetID().compare(demandLogin.ID) == 0)
 						{
+							std::cout << i.GetID() << " == " << demandLogin.ID << std::endl;
+
 							if (!i.GetIsLogin())
 							{
 								if (i.GetPW() == demandLogin.PW)
 								{
+									failReason = 0;
 									i.SetIsLogin(true);
 									winRate = i.GetWinCount();
 									loseRate = i.GetLoseCount();
 									money = i.GetMoney();
+									break;
 								}
 								else
 								{
@@ -474,9 +481,12 @@ DWORD WINAPI WorkerThread(LPVOID arg)
 					}
 				}
 				else if (demandLogin.type == 2) {
+
+					failReason = 0;
+
 					for (auto &i : userData)
 					{
-						if (i.GetID().compare(demandLogin.ID)) {
+						if (i.GetID().compare(demandLogin.ID) == 0) {
 							failReason = 4;
 							break;
 						}
@@ -491,6 +501,8 @@ DWORD WINAPI WorkerThread(LPVOID arg)
 						ptr->dataBuffer = new PermitLoginStruct(0, 0, 0);
 						ptr->bufferProtocol = PERMIT_LOGIN;
 						ptr->isRecvTrue = false;
+
+						isSaveOn = true;
 
 						// 데이터 보내기
 						ZeroMemory(&ptr->overlapped, sizeof(ptr->overlapped));
@@ -562,12 +574,12 @@ DWORD WINAPI WorkerThread(LPVOID arg)
 					}
 				}
 			}
+
 		}
 		else if (!(ptr->isRecvTrue))
 		{
 			if (ptr->bufferProtocol == PERMIT_LOGIN)
 			{
-				std::cout << "ptr->bufferProtocol == PERMIT_LOGIN" << std::endl;
 				ptr->bufferProtocol = -1;
 				ptr->isRecvTrue = true;
 
@@ -594,7 +606,6 @@ DWORD WINAPI WorkerThread(LPVOID arg)
 			}
 			else if (ptr->bufferProtocol == FAIL_LOGIN)
 			{
-				std::cout << "ptr->bufferProtocol == FAIL_LOGIN" << std::endl;
 				ptr->bufferProtocol = -1;
 				ptr->isRecvTrue = true;
 

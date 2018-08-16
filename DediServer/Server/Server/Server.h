@@ -16,6 +16,8 @@
 #include "wininet.h"
 #include <tchar.h>
 
+#include "CommunicationProtocol.h"
+
 using namespace std;
 
 #define SERVER_PORT 9000
@@ -27,6 +29,19 @@ using namespace std;
 
 // For Login
 #define MAX_ID_LEN 12
+
+struct SOCKETINFO
+{
+	OVERLAPPED overlapped;	// OVERLAPPED 구조체
+	WSABUF wsabuf;
+	SOCKET sock;
+	char buf[BUF_SIZE + 1];
+	int dataSize;
+	bool isRecvTrue; // 이게 트루면 받을 타이밍, flase면 주는 타이밍
+	int bufferProtocol; // 이거는 이제 이 번에 뭘해야하는지 저장해놓는거야 오 좋은데...
+
+	BaseStruct* dataBuffer;	// 대망의 친구..
+};
 
 class CUserData {
 	//basic Data
@@ -42,10 +57,11 @@ class CUserData {
 
 public:
 	__inline CUserData() {};
-	__inline CUserData(std::string InID, const int InPW) : m_id(InID), m_pw(InPW), m_winCount(0), m_loseCount(0), m_money(0)
-	{ };
+	__inline CUserData(std::string InID, const int InPW) : m_id(InID), m_pw(InPW), m_winCount(0), m_loseCount(0), m_money(0), m_isLogin(true)
+	{ }; // 회원가입이라, 로그인도 바로 On해줘야함!
+
 	__inline CUserData(const std::string InID, const int InPW, const int InWinCount, const int InloseCount, const int InMoney)
-		: m_id(InID), m_pw(InPW), m_winCount(InWinCount), m_loseCount(InloseCount) , m_money(InMoney)
+		: m_id(InID), m_pw(InPW), m_winCount(InWinCount), m_loseCount(InloseCount) , m_money(InMoney), m_isLogin(false)
 	{ };
 
 	~CUserData() {};
@@ -72,16 +88,6 @@ public:
 
 	__inline bool	GetIsLogin() { return m_isLogin; }
 	__inline void	SetIsLogin(bool bValue) { m_isLogin = bValue; }
-};
-
-struct SOCKETINFO
-{
-	OVERLAPPED overlapped;	// OVERLAPPED 구조체
-	SOCKET sock;
-	char buf[BUF_SIZE + 1];
-	int recvBytes{};
-	int sendBytes{};
-	WSABUF wsabuf;
 };
 
 void err_quit(char *msg) 
@@ -134,143 +140,6 @@ PauseThreadList
 만약 일시정지가 풀리더라도 ReleaseThreadList가 꽉 차있다면 바로 ReleaseThreadList로 보내지 않고 대기한다.
 */
 
-DWORD WINAPI WorkerThread(LPVOID arg)
-{
-	int retVal{};
-	HANDLE hcp = (HANDLE)arg;
-
-	int recvType{};
-	int sendType{};
-
-	while (7)
-	{
-		//비동기 입출력 기다리기
-		DWORD cbTransferred;
-		SOCKET clientSocket;
-		SOCKETINFO *ptr;
-
-		// 입출력 완료 포트에 저장된 결과를 처리하기 위한 함수 // 대기 상태가 됨
-		retVal = GetQueuedCompletionStatus(
-			hcp, //입출력 완료 포트 핸들
-			&cbTransferred, //비동기 입출력 작업으로, 전송된 바이트 수가 여기에 저장된다.
-			(LPDWORD)&clientSocket, //함수 호출 시 전달한 세번째 인자(32비트) 가 여기에 저장된다.
-			(LPOVERLAPPED *)&ptr, //Overlapped 구조체의 주소값
-			INFINITE // 대기 시간 -> 깨울떄 까지 무한대
-		);
-
-		// 할당받은 소켓 즉! 클라이언트 정보 얻기
-		SOCKADDR_IN clientAddr;
-		int addrLength = sizeof(clientAddr);
-		getpeername(ptr->sock, (SOCKADDR *)&clientAddr, &addrLength);
-
-		//비동기 입출력 결과 확인 // 아무것도 안보낼 때는, 해당 클라이언트 접속에 문제가 생긴것으로 판단, 닫아버리겠다!
-		if (retVal == 0 || cbTransferred == 0)
-		{
-			std::cout << "DEBUG - A" << std::endl;
-
-			if (retVal == 0)
-			{
-				DWORD temp1, temp2;
-				WSAGetOverlappedResult(ptr->sock, &ptr->overlapped, &temp1, FALSE, &temp2);
-				err_display((char *)"WSAGetOverlappedResult()");
-			}
-			closesocket(ptr->sock);
-
-			printf("[TCP 서버] 클라이언트 종료 : IP 주소 =%s, 포트 번호 =%d\n",
-				inet_ntoa(clientAddr.sin_addr), ntohs(clientAddr.sin_port));
-			delete ptr;
-			continue;
-		}
-
-		// 데이터 전송량 갱신
-		if (ptr->recvBytes == 0)
-		{
-			std::cout << "DEBUG - B" << std::endl;
-
-			//cbTransferred는 받은 데이터의 크기를 뜻함!! --> 한 글자(영어, 숫자, 공백)에 1byte, (한글)2byte
-			ptr->recvBytes = cbTransferred;
-			ptr->sendBytes = 0;
-
-
-			// 받은 데이터 출력
-			ptr->buf[ptr->recvBytes] = '\0';
-			//printf(" [TCP %s :%d] %s\n", inet_ntoa(clientAddr.sin_addr), ntohs(clientAddr.sin_port), ptr->buf);
-			std::cout << "[Debug] : 전송된 Size : "<< cbTransferred << "  내용 :  " << ptr->buf << std::endl;
-		}
-		else
-		{
-			std::cout << "DEBUG - C" << std::endl;
-
-			ptr->sendBytes += cbTransferred;
-
-		}
-
-		if (ptr->recvBytes > ptr->sendBytes) 
-		{
-			std::cout << "DEBUG - D" << std::endl;
-
-			// 데이터 보내기
-			ZeroMemory(&ptr->overlapped, sizeof(ptr->overlapped));
-			ptr->wsabuf.buf = ptr->buf + ptr->sendBytes;
-			ptr->wsabuf.len = ptr->recvBytes - ptr->sendBytes;
-
-			DWORD sendBytes;
-			retVal = WSASend(
-				ptr->sock, // 클라이언트 소켓
-				&ptr->wsabuf, // 읽을 데이터 버퍼의 포인터
-				1, // 데이터 입력 버퍼의 개수
-				&sendBytes, // Send 바이트 수...?
-				0, // ??????????????
-				&ptr->overlapped, // overlapped구조체의 포인터
-				NULL // IOCP에서는 사용하지 않으므로 NULL, nullptr넘겨도 무방
-			);
-
-			if (retVal == SOCKET_ERROR)
-			{
-				if (WSAGetLastError() != WSA_IO_PENDING)
-				{
-					err_display((char *)"WSASend()");
-				}
-				continue;
-			}
-
-
-		}
-		else {
-			ptr->recvBytes = 0;
-
-			//데이터 받기
-			ZeroMemory(&ptr->overlapped, sizeof(ptr->overlapped));
-			ptr->wsabuf.buf = ptr->buf;
-			ptr->wsabuf.len = BUF_SIZE;
-
-			DWORD recvBytes;
-			DWORD flags{0};
-			retVal = WSARecv(
-				ptr->sock, // 클라이언트 소켓
-				&ptr->wsabuf, // 읽을 데이터 버퍼의 포인터
-				1, // 데이터 입력 버퍼의 개수
-				&recvBytes, // recv 결과 읽은 바이트 수, IOCP에서는 비동기 방식으로 사용하지 않으므로 nullPtr를 넘겨도 무방
-				&flags,  // recv에 사용될 플래그
-				&ptr->overlapped, // overlapped구조체의 포인터
-				NULL // IOCP에서는 사용하지 않으므로 NULL, nullptr넘겨도 무방
-			);
-
-			if (retVal == SOCKET_ERROR) 
-			{
-				if (WSAGetLastError() != WSA_IO_PENDING) 
-				{
-					err_display((char *)"WSARecv()");
-				}
-				continue;
-			}
-
-			std::cout << "DEBUG - E" << std::endl;
-
-		}
-	}
-};
- 
 int GetExternalIP(char *ip)
 {
 	HINTERNET hInternet, hFile;
