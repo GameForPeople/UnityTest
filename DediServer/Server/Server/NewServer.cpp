@@ -264,8 +264,10 @@ DWORD WINAPI WorkerThread(LPVOID arg)
 
 				if (recvType == DEMAND_LOGIN) 
 				{
-					DemandLoginStruct demandLogin = (DemandLoginStruct&)(ptr->buf[4]);
+					DemandLoginCharStruct demandLogin = (DemandLoginCharStruct&)(ptr->buf[4]);
+					demandLogin.ID[demandLogin.IDSize] = '\0';
 					std::cout << "아이디 비밀번호, 타입을 입력 받았습니다. ID:  " << demandLogin.ID << "  PW : " << demandLogin.PW << "  type : " << demandLogin.type << std::endl;
+					
 
 					if (demandLogin.type == 1) //로그인 처리입니다.
 					{
