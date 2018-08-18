@@ -268,7 +268,6 @@ DWORD WINAPI WorkerThread(LPVOID arg)
 					demandLogin.ID[demandLogin.IDSize] = '\0';
 					std::cout << "아이디 비밀번호, 타입을 입력 받았습니다. ID:  " << demandLogin.ID << "  PW : " << demandLogin.PW << "  type : " << demandLogin.type << std::endl;
 					
-
 					if (demandLogin.type == 1) //로그인 처리입니다.
 					{
 						int outWinCount{};
@@ -284,17 +283,20 @@ DWORD WINAPI WorkerThread(LPVOID arg)
 							ptr->dataBuffer = new PermitLoginStruct(outWinCount, outLoseCount, outMoney);
 							//permitLoginStruct* a = static_cast<PermitLoginStruct *>(ptr->dataBuffer);
 							ZeroMemory(&ptr->overlapped, sizeof(ptr->overlapped));
+							
 							int buffer = PERMIT_LOGIN;
 							memcpy(ptr->buf, (char*)&buffer, sizeof(int));
-							ptr->dataSize = sizeof(int);
+							memcpy(ptr->buf + 4, (char*)ptr->dataBuffer, sizeof(PermitLoginStruct));
+							
+							ptr->dataSize = sizeof(int) + sizeof(PermitLoginStruct);
 
 							//데이터 바인드
 							ptr->wsabuf.buf = ptr->buf; // ptr->buf;
 							ptr->wsabuf.len = ptr->dataSize;
 
 							// 다음 통신 준비
-							ptr->bufferProtocol = PERMIT_LOGIN;
-							ptr->isRecvTrue = false;
+							ptr->bufferProtocol = END_SEND;
+							ptr->isRecvTrue = true;
 							
 							DWORD sendBytes;
 							retVal = WSASend( ptr->sock, &ptr->wsabuf, 1, &sendBytes, 0, &ptr->overlapped,NULL);
@@ -312,7 +314,36 @@ DWORD WINAPI WorkerThread(LPVOID arg)
 							std::cout << "로그인에 실패했습니다.  해당 사유는 : " << failReason << std::endl;
 
 							// 데이터 준비
-							ptr->dataBuffer = new FailLoginStruct(failReason);
+							ZeroMemory(&ptr->overlapped, sizeof(ptr->overlapped));
+
+							int buffer = FAIL_LOGIN;
+							memcpy(ptr->buf, (char*)(buffer), sizeof(buffer));
+							memcpy(ptr->buf + 4, (char*)(failReason), sizeof(int));
+							ptr->dataSize = 8; // 4+ 4
+
+							// 데이터 바인딩
+							ptr->wsabuf.buf = ptr->buf; // ptr->buf;
+							ptr->wsabuf.len = ptr->dataSize;
+
+							// 다음 통신 준비
+							ptr->bufferProtocol = END_SEND;
+							ptr->isRecvTrue = true;
+							
+							// 데이터 전송
+							DWORD sendBytes;
+							retVal = WSASend( ptr->sock, &ptr->wsabuf, 1, &sendBytes, 0, &ptr->overlapped, NULL);
+							if (retVal == SOCKET_ERROR)
+							{
+								if (WSAGetLastError() != WSA_IO_PENDING)
+								{
+									err_display((char *)"WSASend()");
+								}
+								continue;
+							}
+
+							/*
+							// 데이터 준비
+							ptr->dataBuffer = new BaseSendStruct(failReason, (new FailLoginStruct(failReason)));
 							ZeroMemory(&ptr->overlapped, sizeof(ptr->overlapped));
 
 							int buffer = FAIL_LOGIN;
@@ -326,10 +357,10 @@ DWORD WINAPI WorkerThread(LPVOID arg)
 							// 다음 통신 준비
 							ptr->bufferProtocol = FAIL_LOGIN;
 							ptr->isRecvTrue = false;
-							
+
 							// 데이터 전송
 							DWORD sendBytes;
-							retVal = WSASend( ptr->sock, &ptr->wsabuf, 1, &sendBytes, 0, &ptr->overlapped, NULL);
+							retVal = WSASend(ptr->sock, &ptr->wsabuf, 1, &sendBytes, 0, &ptr->overlapped, NULL);
 							if (retVal == SOCKET_ERROR)
 							{
 								if (WSAGetLastError() != WSA_IO_PENDING)
@@ -338,6 +369,7 @@ DWORD WINAPI WorkerThread(LPVOID arg)
 								}
 								continue;
 							}
+							*/
 						}
 					}
 					else if (demandLogin.type == 2) //회원가입 처리입니다.
@@ -354,19 +386,24 @@ DWORD WINAPI WorkerThread(LPVOID arg)
 							isSaveOn = true;
 
 							// 데이터 준비
-							ptr->dataBuffer = new PermitLoginStruct(0, 0, 0);
 							ZeroMemory(&ptr->overlapped, sizeof(ptr->overlapped));
 							int buffer = PERMIT_LOGIN;
 							memcpy(ptr->buf, (char*)&buffer, sizeof(buffer));
-							ptr->dataSize = sizeof(buffer);
+							buffer = 0; // 새로 회원 가입 시, 승리, 패배, 돈은 항상 ㅇ임 // 굳이 안보내도 되지만 일단 보내겠음 돈 줄수도 있으니까!
+							//잊지마 4등록
+							memcpy(ptr->buf + 4, (char*)&buffer, sizeof(buffer));
+							memcpy(ptr->buf + 8, (char*)&buffer, sizeof(buffer));
+							memcpy(ptr->buf + 12, (char*)&buffer, sizeof(buffer));
+
+							ptr->dataSize = 16;
 
 							// 데이터 바인딩
 							ptr->wsabuf.buf = ptr->buf; // ptr->buf;
 							ptr->wsabuf.len = ptr->dataSize;
 
 							// 다음 데이터 준비
-							ptr->bufferProtocol = PERMIT_LOGIN;
-							ptr->isRecvTrue = false;
+							ptr->bufferProtocol = END_SEND;
+							ptr->isRecvTrue = true;
 
 							// 데이터 전송
 							DWORD sendBytes;
@@ -385,19 +422,20 @@ DWORD WINAPI WorkerThread(LPVOID arg)
 							std::cout << "회원가입에 실패했습니다.  해당 사유는 : " << failReason << std::endl;
 
 							// 데이터 준비
-							ptr->dataBuffer = new FailLoginStruct(failReason);
 							ZeroMemory(&ptr->overlapped, sizeof(ptr->overlapped));
 							int buffer = FAIL_LOGIN;
 							memcpy(ptr->buf, (char*)&buffer, sizeof(buffer));
-							ptr->dataSize = sizeof(buffer);
+							memcpy(ptr->buf + 4, (char*)&failReason, sizeof(buffer));
+
+							ptr->dataSize = 8;
 							
 							// 데이터 바인딩
 							ptr->wsabuf.buf = ptr->buf; // ptr->buf;
 							ptr->wsabuf.len = ptr->dataSize;
 
 							// 다음 전송 데이터 준비
-							ptr->bufferProtocol = FAIL_LOGIN;
-							ptr->isRecvTrue = false;
+							ptr->bufferProtocol = END_SEND;
+							ptr->isRecvTrue = true;
 
 							// 데이터 전송
 							DWORD sendBytes;
@@ -423,62 +461,6 @@ DWORD WINAPI WorkerThread(LPVOID arg)
 		}
 		else if (!(ptr->isRecvTrue))
 		{
-			if (ptr->bufferProtocol == PERMIT_LOGIN)
-			{
-				// 다음 턴 준비
-				ptr->bufferProtocol = -1;
-				ptr->isRecvTrue = true;
-
-				// 데이터 준비
-				ZeroMemory(&ptr->overlapped, sizeof(ptr->overlapped));
-				memcpy(ptr->buf, (char*)(ptr->dataBuffer), sizeof(PermitLoginStruct));
-				ptr->dataSize = sizeof(PermitLoginStruct);
-				delete (ptr->dataBuffer);
-
-				// 데이터 바인딩
-				ptr->wsabuf.buf = ptr->buf; // ptr->buf;
-				ptr->wsabuf.len = ptr->dataSize;
-
-				// 데이터 전송
-				DWORD sendBytes;
-				retVal = WSASend(ptr->sock, &ptr->wsabuf, 1, &sendBytes, 0, &ptr->overlapped, NULL);
-				if (retVal == SOCKET_ERROR)
-				{
-					if (WSAGetLastError() != WSA_IO_PENDING)
-					{
-						err_display((char *)"WSASend()");
-					}
-					continue;
-				}
-			}
-			else if (ptr->bufferProtocol == FAIL_LOGIN)
-			{
-				// 다음 턴 준비
-				ptr->bufferProtocol = -1;
-				ptr->isRecvTrue = true;
-
-				// 데이터 준비
-				ZeroMemory(&ptr->overlapped, sizeof(ptr->overlapped));
-				memcpy(ptr->buf, (char*)(ptr->dataBuffer), sizeof(FailLoginStruct));
-				ptr->dataSize = sizeof(FailLoginStruct);
-				delete (ptr->dataBuffer);
-
-				// 데이터 바인딩
-				ptr->wsabuf.buf = ptr->buf; // ptr->buf;
-				ptr->wsabuf.len = ptr->dataSize;
-
-				//데이터 전송
-				DWORD sendBytes;
-				retVal = WSASend(ptr->sock, &ptr->wsabuf, 1, &sendBytes, 0, &ptr->overlapped, NULL);
-				if (retVal == SOCKET_ERROR)
-				{
-					if (WSAGetLastError() != WSA_IO_PENDING)
-					{
-						err_display((char *)"WSASend()");
-					}
-					continue;
-				}
-			}
 		}
 	}
 };
@@ -487,7 +469,7 @@ DWORD WINAPI SaveUserDate(LPVOID arg) {
 	while (7) {
 		Sleep(10000);
 
+		//지금 자야되니까 나중에 이거보면 isSaveOn == if문 함수 밖으로 뺴라 멍청아... 이걸 거따가 집어넣네
 		userData.Save(isSaveOn);
 	}
 }
-
