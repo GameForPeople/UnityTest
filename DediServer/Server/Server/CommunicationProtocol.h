@@ -10,11 +10,36 @@ enum Protocol {
 	, DEMAND_LOGIN = 100
 	, FAIL_LOGIN = 101
 	, PERMIT_LOGIN = 102
+	, DEMAND_GAMESTATE = 400
+};
+
+enum class SCENE_NAME {
+	TITLE_SCENE,	// 로고 노출 및 연결
+	LOGIN_SCENE,	// 계정 로그인
+	LOBBY_SCENE,	// 이거 쫌 그래 사실 별로야
+	ROOM_SCENE,		// 방으로 연결
+	INGAME_SCENE	// 얍얍얍 인게임 얍얍얍
 };
 
 // 기반 스트럭처
 struct BaseStruct {
 
+};
+
+struct BaseSendStruct : public BaseStruct {
+	int sendType{};
+	BaseStruct* dataBuffer;
+
+public:
+	__inline BaseSendStruct(const int InSendType, BaseStruct* InStruct) : sendType(InSendType), dataBuffer(InStruct)
+	{};
+	
+	__inline BaseSendStruct() = default;
+	
+	__inline ~BaseSendStruct()
+	{
+		if (dataBuffer != nullptr) delete dataBuffer;
+	}
 };
 
 // type 100일때, 서버에 바로 다음 날려주는 구조체
@@ -51,7 +76,7 @@ struct FailLoginStruct : public BaseStruct {
 // type 102 Server -> Client 로그인 성공, Lobby정보, 계정정보 전달
 struct PermitLoginStruct : public BaseStruct {
 	int winCount{};
-	int loseCount{};
+	int loseCount{}; 
 	int money{};
 
 	__inline PermitLoginStruct(const int InWin,const int InLose,const int InMoney) : winCount(InWin) , loseCount(InLose) , money(InMoney)
@@ -59,4 +84,17 @@ struct PermitLoginStruct : public BaseStruct {
 
 	__inline PermitLoginStruct() = default;
 	__inline ~PermitLoginStruct() = default;
+};
+
+// type 401 -> One Player Changed
+struct OnePlayerChanged : public BaseStruct
+{
+	int index{};
+	int mixedData{};
+
+	__inline OnePlayerChanged() = default;
+	__inline OnePlayerChanged(int InIndex, int InLeftOrRight, int isJumping ) :index(InIndex)
+	{
+		mixedData = InLeftOrRight * 10 + isJumping;
+	};
 };
