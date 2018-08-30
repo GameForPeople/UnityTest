@@ -1,27 +1,13 @@
 #pragma once
 
-#pragma comment(lib, "ws2_32")
-#pragma comment(lib, "wininet.lib")
-
-#include <WinSock2.h>
-#include <iostream>
-#include <cstdlib>
-
-#include <fstream>
-
-#include <vector>
-#include <string>
-
-// For ExternalIP
-#include "wininet.h"
-#include <tchar.h>
+#include "stdafx.h"
 
 #include "CommunicationProtocol.h"
-
-using namespace std;
+#include "UserData.h"
+#include "GameRoom.h"
 
 #define SERVER_PORT 9000
-#define BUF_SIZE 512
+#define BUF_SIZE 100
 
 // For ExternalIP
 #define EXTERNALIP_FINDER_URL "http://checkip.dyndns.org/"
@@ -40,54 +26,12 @@ struct SOCKETINFO
 	bool isRecvTrue; // 이게 트루면 받을 타이밍, flase면 주는 타이밍
 	int bufferProtocol; // 이거는 이제 이 번에 뭘해야하는지 저장해놓는거야 오 좋은데...
 
-	BaseStruct* dataBuffer;	// 대망의 친구..
-};
-
-class CUserData {
-	//basic Data
-	std::string m_id{};
-	int m_pw{};
-	int m_winCount{};
-	int m_loseCount{};
-	int m_money{};
-
-	//Game use Data
-	bool m_isLogin{ false };
-	IN_ADDR m_userAddr{};
-
-public:
-	__inline CUserData() {};
-	__inline CUserData(std::string InID, const int InPW) : m_id(InID), m_pw(InPW), m_winCount(0), m_loseCount(0), m_money(0), m_isLogin(true)
-	{ }; // 회원가입이라, 로그인도 바로 On해줘야함!
-
-	__inline CUserData(const std::string InID, const int InPW, const int InWinCount, const int InloseCount, const int InMoney)
-		: m_id(InID), m_pw(InPW), m_winCount(InWinCount), m_loseCount(InloseCount) , m_money(InMoney), m_isLogin(false)
-	{ };
-
-	~CUserData() {};
-
-public:
-	__inline void	SetIPAddress(IN_ADDR& inputAddress) { m_userAddr = inputAddress; m_isLogin = true; }
-
-	__inline void	PrintUserData() 
-	{ 
-		std::cout << m_id << "  " << m_pw << "  " << m_winCount << "  " << m_loseCount << std::endl;
-	}
+	int userIndex;	// 회원가입 + 로그인 시, 로드 유저 데이터에서 해당 인덱스 저장하여 사용!
 	
-	__inline string	GetID() { return m_id; }
-	__inline int	GetPW() { return m_pw; }
-	__inline int	GetWinCount() { return m_winCount; }
-	__inline int	GetLoseCount() { return m_loseCount; }
-	__inline int	GetMoney() { return m_money; }
+	int roomIndex;	// 방 만들거나 접속 시, 사용될 roomData의 인덱스
+	bool isHost; // 인게임에서 호스트역활인지 아닌지 체크.
 
-	__inline void	SetWinOrLose(int value) {
-		if (value == 1) { m_winCount++; }
-		else if (value == 2) { m_loseCount++; }
-		return;
-	}
-
-	__inline bool	GetIsLogin() { return m_isLogin; }
-	__inline void	SetIsLogin(bool bValue) { m_isLogin = bValue; }
+	BaseStruct* dataBuffer;	// 대망의 이 친구..는 사실 바이트단위로 전송하면서..쓰레기가 되어버렸는데..
 };
 
 void err_quit(char *msg) 

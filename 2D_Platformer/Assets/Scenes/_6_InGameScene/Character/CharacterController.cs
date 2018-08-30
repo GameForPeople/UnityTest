@@ -2,29 +2,29 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-public class BallController : MonoBehaviour {
+public class CharacterController : MonoBehaviour {
 
     float newPosX;
     Vector3 newMove;
     float speed = 4.0f;
 
-    //public static int PlayerCount = 0;
+    int moveDir = 0; // -1 left, +1 Right, 0 Stop
+    public int dirLeftOrRightBuffer = 1; // -1 left, +1 Right
 
-    public int dirLeftOrRight = 0;
     bool isOnLeft = false;
     bool isOnRight = false;
     public bool isOnControl = false;
-    public bool isJumping;
-    new Rigidbody rigidbody;
+    public bool isOnJumping;
+
+    new Rigidbody2D rigidbody;
 
     // Use this for initialization
     void Start () {
-        rigidbody = GetComponent<Rigidbody>();
-	}
-	
+        rigidbody = GetComponent<Rigidbody2D>();
+    }
+
     // Update is called once per frame
-    void Update()
-    {
+    void Update () {
         if (isOnControl)
         {
             InputLeftOrRight();
@@ -33,25 +33,24 @@ public class BallController : MonoBehaviour {
     }
 
     // Update to rigidbody
-    void FixedUpdate () {
+    void FixedUpdate()
+    {
         //네트워크로 컨트롤 하려면 이 옵션 꺼야함
         //if (isOnControl) 
         //{
-            MoveLeftOrRight();
-            Jump();
+        MoveLeftOrRight();
+        Jump();
         //}
     }
-
 
     void SetIsControl(bool InIsOnCOntrol)
     {
         isOnControl = InIsOnCOntrol;
     }
 
-
     void MoveLeftOrRight()
     {
-        newPosX = dirLeftOrRight * speed * Time.deltaTime;
+        newPosX = moveDir * speed * Time.deltaTime;
         newMove.Set(newPosX, 0, 0);
         //transform.position = new Vector3(newPosX, transform.position.y, transform.position.z);
         rigidbody.MovePosition(transform.position + newMove);
@@ -59,7 +58,7 @@ public class BallController : MonoBehaviour {
 
     void InputLeftOrRight()
     {
-        if(Input.GetButtonDown("Left"))
+        if (Input.GetButtonDown("Left"))
         {
             isOnLeft = true;
         }
@@ -69,74 +68,56 @@ public class BallController : MonoBehaviour {
         }
 
         if (Input.GetButtonDown("Right"))
-        { 
+        {
             isOnRight = true;
         }
-        else if (Input.GetButtonUp("Right")) 
+        else if (Input.GetButtonUp("Right"))
         {
             isOnRight = false;
         }
 
         if (isOnLeft && isOnRight)
         {
-            if(dirLeftOrRight == 1)
+            if (moveDir == 1)
             {
-                dirLeftOrRight = -1;
+                moveDir = -1;
+                dirLeftOrRightBuffer = -1;
             }
             else
             {
-                dirLeftOrRight = 1;
+                moveDir = 1;
+                dirLeftOrRightBuffer = 1;
             }
         }
         else if (isOnLeft)
         {
-            dirLeftOrRight = -1;
+            moveDir = -1;
+            dirLeftOrRightBuffer = -1;
         }
         else if (isOnRight)
         {
-            dirLeftOrRight = 1;
+            moveDir = 1;
+            dirLeftOrRightBuffer = 1;
         }
         else
         {
-            dirLeftOrRight = 0;
+            moveDir = 0;
         }
     }
 
     void Jump()
     {
-        if (!isJumping)
+        if (!isOnJumping)
             return;
 
-        rigidbody.AddForce(Vector3.up * 7.5f , ForceMode.Impulse);
+        rigidbody.AddForce(Vector3.up * 50f, ForceMode2D.Impulse);
 
-        isJumping = false;
+        isOnJumping = false;
     }
 
     void InputJump()
     {
         if (Input.GetButtonDown("Jump"))
-            isJumping = true;
-    }
-
-    void ProcessRecvData(int InMixedData)
-    {
-        Debug.Log("LogMessage : " + InMixedData);
-
-        if(InMixedData / 10 == 0)
-        {
-            dirLeftOrRight = 0;
-        }
-        else if (InMixedData / 10 == 1)
-        {
-            dirLeftOrRight = -1;
-        }
-        else if (InMixedData / 10 == 2)
-        {
-            dirLeftOrRight = 1;
-        }
-        if (InMixedData % 10 == 1)
-        {
-            isJumping = true;
-        }
+            isOnJumping = true;
     }
 }
