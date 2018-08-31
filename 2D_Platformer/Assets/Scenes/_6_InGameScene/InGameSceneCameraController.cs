@@ -9,12 +9,12 @@ public class InGameSceneCameraController : MonoBehaviour {
 
     float nowDistance = 0.0f;
 
-    const float STANDARD_DISTANCE = 0.5f;    //  카메라와 캐릭터의 기준 거리를 STANDATD_DISTANCE로 둔다.
-    const float SOFT_LIMIT_DISTANCE = 1.0f;    //  카메라와 캐릭터의 거리가 
-    const float HARD_LIMIT_DISTANCE = 2.0f;
+    const float STANDARD_DISTANCE = 0.25f;    //  카메라와 캐릭터의 기준 거리를 STANDATD_DISTANCE로 둔다.
+    const float SOFT_LIMIT_DISTANCE = 0.5f;    //  카메라와 캐릭터의 거리가 
+    const float HARD_LIMIT_DISTANCE = 1.0f;
 
-    const float SOFT_MOVE_SPEED = 180.0f;
-    const float HARD_MOVE_SPEED = 60.0f;
+    const float SOFT_MOVE_SPEED = 90.0f;
+    const float HARD_MOVE_SPEED = 20.0f;
 
     Vector3 positionBuffer;
     int intBuffer;
