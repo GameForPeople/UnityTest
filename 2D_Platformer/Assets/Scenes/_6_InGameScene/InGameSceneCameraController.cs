@@ -19,34 +19,51 @@ public class InGameSceneCameraController : MonoBehaviour {
     Vector3 positionBuffer;
     int intBuffer;
 
-    // Use this for initialization
-    void Start () {
-        //Debug.Log("CameraStart!!");
+    // Use this for initialization 잘가 스타트
+    //void Start () {
 
-        focusTarget = GameObject.Find(TargetName);
-        positionBuffer.Set((focusTarget.transform.position.x - STANDARD_DISTANCE) , (focusTarget.transform.position.y + 0.5f), -10);
-        transform.position = positionBuffer;
+       //if (GameObject.Find("GameCores").transform.Find("NetworkManager").GetComponent<NetworkManager>().isHost)
+       //{
+       //     TargetName = "HostCharacter";
+       //}
+       //else
+       //{
+       //     TargetName = "GuestCharacter";
+       //}
+       //
+       // focusTarget = GameObject.Find(TargetName);
+       //
+       // positionBuffer.Set((focusTarget.transform.position.x - STANDARD_DISTANCE) , (focusTarget.transform.position.y + 0.5f), -10);
+       // transform.position = positionBuffer;
+
         // 이거 쪼금 그런게, 객체 자체를 저장하기보다는, 객체의 포지션을 하나 갖고 있는게 적합할듯?? -> 고러면 갱신이 알아서 되나? 포인터를 공유해서?, 안될껄?, 몰러이씨
-    }
+    //}
 	
-    public void SetNewTarget (string InString)
+    public void SetTargetCharacter (int InCharacterEnum)
     {
-        TargetName = InString;
+        if (InCharacterEnum == 1)
+        {
+            TargetName = "HostCharacter";
+        }
+        else if (InCharacterEnum == 2)
+        {
+            TargetName = "GuestCharacter";
+        }
+
         focusTarget = GameObject.Find(TargetName); // InString 바로 넣어도 되는데, 굳이..?
+
+        transform.position = new Vector3((focusTarget.transform.position.x - STANDARD_DISTANCE), (focusTarget.transform.position.y + 0.5f), -10);
     }
 
-    // Update is called once per frame
     void FixedUpdate() {
 
         //transform.position = focusTarget.transform.position;
-
         CameraStateTest();
     }
 
     void CameraStateTest()
     {
         intBuffer = focusTarget.GetComponent<CharacterController>().dirLeftOrRightBuffer; // 이거 나중에는 메세징으로 변경해서, 캐릭터에 해당 키가 눌릴 때 마다 변경하는게 낳긴 한데 구찮어
-
 
         if (intBuffer == 1)
         {
@@ -143,8 +160,4 @@ public class InGameSceneCameraController : MonoBehaviour {
         }
     }
 
-    //void FixedUpdate()
-    //{
-    // 음 굳이... 카메라 움직임을 고정 업데이트에서 처리해줄 필요가 있는가... 이건 테스트를 해봐야 알 거 같어!
-    //}
 }
