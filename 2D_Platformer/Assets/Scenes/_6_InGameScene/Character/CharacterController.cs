@@ -4,6 +4,11 @@ using UnityEngine;
 
 public class CharacterController : MonoBehaviour {
 
+    // ---- please Release - Off! ----
+    public bool ON_INSERT_FOR_TEST_PC_KEY = true; 
+    // -----------------------------
+
+
     float newPosX;
     Vector3 newMove;
 
@@ -60,8 +65,16 @@ public class CharacterController : MonoBehaviour {
 
     void InputLeftOrRight()
     {
-        isOnLeft = isMobileOnLeft;
-        isOnRight = isMobileOnRight;
+        if (ON_INSERT_FOR_TEST_PC_KEY)
+        {
+            isOnLeft = Input.GetButton("Left");
+            isOnRight = Input.GetButton("Right");
+        }
+        else
+        {
+            isOnLeft = isMobileOnLeft;
+            isOnRight = isMobileOnRight;
+        }
 
         if (isOnLeft && isOnRight)
         {
@@ -97,25 +110,52 @@ public class CharacterController : MonoBehaviour {
 
     void InputJump()
     {
-        //if (Input.GetButtonDown("Jump"))
-        if (isMobileOnJump)
+        if (ON_INSERT_FOR_TEST_PC_KEY)
         {
-            if (isjumpCount == false)
+            if (Input.GetButtonDown("Jump"))
             {
-                isjumpCount = true; // 더블점프 꺼놈
-                isOnJumping = true;
-                jumpTimer = JUMP_MAX_TIMER;
+                if (isjumpCount == false)
+                {
+                    isjumpCount = true; // 더블점프 꺼놈
+                    isOnJumping = true;
+                    jumpTimer = JUMP_MAX_TIMER;
+                }
+            }
+        }
+        else
+        {
+            if (isMobileOnJump)
+            {
+                if (isjumpCount == false)
+                {
+                    isjumpCount = true; // 더블점프 꺼놈
+                    isOnJumping = true;
+                    jumpTimer = JUMP_MAX_TIMER;
+                }
             }
         }
     }
 
     void InputFire()
     {
-        if (isMobileOnFire)
+        if (ON_INSERT_FOR_TEST_PC_KEY)
         {
-            if (!isOnFire)
+            if (Input.GetButtonDown("Fire"))
             {
-                Fire();
+                if (!isOnFire)
+                {
+                    Fire();
+                }
+            }
+        }
+        else
+        {
+            if (isMobileOnFire)
+            {
+                if (!isOnFire)
+                {
+                    Fire();
+                }
             }
         }
     }
