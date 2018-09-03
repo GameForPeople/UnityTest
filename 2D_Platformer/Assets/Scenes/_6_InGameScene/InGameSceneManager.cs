@@ -22,7 +22,7 @@ public class InGameSceneManager : MonoBehaviour
 
     void InitMemberObject()
     {
-        networkObject = GameObject.Find("GameCores").transform.Find("NetworkManager").gameObject;
+        //networkObject = GameObject.Find("GameCores").transform.Find("NetworkManager").gameObject;
         hostCharacter = GameObject.Find("HostCharacter");
         guestCharacter = GameObject.Find("GuestCharacter");
         projectileController = GameObject.Find("ProjectileController");
