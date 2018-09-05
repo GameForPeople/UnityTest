@@ -9,7 +9,8 @@ public class Projectile : MonoBehaviour
     int moveDir;
     float newPosX;
     Vector3 newMove;
-    public int moveCount = 0;
+
+    public bool isOnMove = false;
 
     // Use this for initialization
     void Start()
@@ -30,33 +31,35 @@ public class Projectile : MonoBehaviour
     {
         transform.position = new Vector3(InPos.x, InPos.y + 0.1f, 1);
 
+        moveDir = InDir;
         newPosX = moveDir * 3.0f;
         newMove.Set(newPosX, 0, 0);
         rigidbody.MovePosition(transform.position + newMove);
 
-        moveDir = InDir;
-
-        moveCount = 90;
+        isOnMove = true;
         StartCoroutine("ProjectileCoroutine");
+    }
+
+    void FixedUpdate()
+    {
+        if (isOnMove)
+        {
+            MoveLeftOrRight();
+        }
     }
 
     void MoveLeftOrRight()
     {
-        newPosX = moveDir * 15.0f * Time.deltaTime;
+        newPosX = moveDir * 14.0f * Time.deltaTime;
         newMove.Set(newPosX, 0, 0);
-        //transform.position = new Vector3(newPosX, transform.position.y, transform.position.z);
+
         rigidbody.MovePosition(transform.position + newMove);
     }
 
     IEnumerator ProjectileCoroutine()
     {
-        while (moveCount > 0)
-        {
-            --moveCount;
-            MoveLeftOrRight();
-
-            yield return new WaitForSeconds(1.0f / 60.0f);
-        }
+        yield return new WaitForSeconds(0.85f);
+        
         TurnOff();
     }
 
@@ -78,8 +81,7 @@ public class Projectile : MonoBehaviour
 
     void TurnOff()
     {
-        moveCount = 0;
-
+        isOnMove = false;
         rigidbody.MovePosition(new Vector2(-100, -100));
     }
 }
