@@ -19,15 +19,19 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="Server.cpp" />
-    <ClCompile Include="stdafx.cpp" />
+    <ClCompile Include="IOCPServer\IOCPServer.cpp" />
+    <ClCompile Include="IOCPServer\ServerError.cpp" />
+    <ClCompile Include="main.cpp" />
+    <ClCompile Include="stdafx.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="CommunicationProtocol.h" />
-    <ClInclude Include="GameRoom.h" />
-    <ClInclude Include="Server.h" />
+    <ClInclude Include="GameRoom\GameRoom.h" />
+    <ClInclude Include="IOCPServer\IOCPServer.h" />
+    <ClInclude Include="Protocol\CommunicationProtocol.h" />
     <ClInclude Include="stdafx.h" />
-    <ClInclude Include="UserData.h" />
+    <ClInclude Include="UserData\UserData.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>15.0</VCProjectVersion>
@@ -87,7 +91,8 @@
       <Optimization>Disabled</Optimization>
       <SDLCheck>false</SDLCheck>
       <ConformanceMode>true</ConformanceMode>
-      <PrecompiledHeader>Create</PrecompiledHeader>
+      <PrecompiledHeader>Use</PrecompiledHeader>
+      <AdditionalIncludeDirectories>D:\Github\Bridge_UnityProject\DediServer\Server\Server;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
