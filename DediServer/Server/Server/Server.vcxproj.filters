@@ -39,9 +39,6 @@
     <ClCompile Include="IOCPServer\IOCPServer.cpp">
       <Filter>소스 파일\IOCPServer</Filter>
     </ClCompile>
-    <ClCompile Include="IOCPServer\ServerError.cpp">
-      <Filter>소스 파일\IOCPServer</Filter>
-    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="stdafx.h">

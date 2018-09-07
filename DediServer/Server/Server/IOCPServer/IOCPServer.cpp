@@ -1,6 +1,79 @@
 #include "stdafx.h"
 #include "IOCPServer.h"
-#include "ServerError.cpp"
+
+namespace NETWORK_UTIL {
+	void ERROR_QUIT(char *msg)
+	{
+		LPVOID lpMsgBuf;
+		FormatMessage(
+			FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM,
+			NULL,
+			WSAGetLastError(),
+			MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+			(LPTSTR)&lpMsgBuf,
+			0,
+			NULL
+		);
+
+		MessageBox(NULL, (LPTSTR)lpMsgBuf, msg, MB_ICONERROR);
+		LocalFree(lpMsgBuf);
+		exit(1);
+	};
+
+	void ERROR_DISPLAY(char *msg)
+	{
+		LPVOID lpMsgBuf;
+		FormatMessage(
+			FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM,
+			NULL,
+			WSAGetLastError(),
+			MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+			(LPTSTR)&lpMsgBuf,
+			0,
+			NULL
+		);
+		printf(" [%s]  %S", msg, (char *)lpMsgBuf);
+		LocalFree(lpMsgBuf);
+	};
+
+	bool SendProcess(SOCKETINFO* ptr, const int InDataSize, const int InNowProtocol, const Protocol InNextProtocol = END_SEND, const bool InIsRecvTrue = true)
+	{
+		memcpy(ptr->buf, (char*)&InNowProtocol, sizeof(int));
+
+		// 프로토콜만 보낼때를 제외하고!
+		if (InDataSize > sizeof(int))
+		{
+			memcpy(ptr->buf + 4, (char*)ptr->dataBuffer, InDataSize - sizeof(int));
+			ZeroMemory(&ptr->overlapped, sizeof(ptr->overlapped));
+
+			// 잘가랏 고생했다
+			if (ptr->dataBuffer != nullptr)
+				delete (ptr->dataBuffer);
+		}
+
+		ptr->dataSize = InDataSize;
+
+		// 데이터 바인드
+		ptr->wsabuf.buf = ptr->buf;
+		ptr->wsabuf.len = ptr->dataSize;
+
+		// 다음 Thread의 처리를 위한 정보 저장
+		ptr->bufferProtocol = InNextProtocol;
+		ptr->isRecvTrue = InIsRecvTrue;
+
+		// 받아랏!!!
+		int retVal = WSASend(ptr->sock, &ptr->wsabuf, 1, NULL, 0, &ptr->overlapped, NULL);
+
+		if (retVal == SOCKET_ERROR)
+		{
+			if (WSAGetLastError() != WSA_IO_PENDING)
+			{
+				ERROR_DISPLAY((char *)"WSASend()");
+			}
+			return true;
+		}
+	}
+};
 
 //Init
 int IOCPServer::GetExternalIP(char *ip)
@@ -113,7 +186,7 @@ void IOCPServer::CreateBindListen()
 {
 	//Socket()
 	listenSocket = socket(AF_INET, SOCK_STREAM, 0);
-	if (listenSocket == INVALID_SOCKET) err_quit((char *)"socket()");
+	if (listenSocket == INVALID_SOCKET) NETWORK_UTIL::ERROR_QUIT((char *)"socket()");
 
 	//bind()
 	ZeroMemory(&serverAddr, sizeof(serverAddr));
@@ -121,14 +194,15 @@ void IOCPServer::CreateBindListen()
 	serverAddr.sin_addr.s_addr = htonl(INADDR_ANY);
 	serverAddr.sin_port = htons(SERVER_PORT);
 	int retVal = ::bind(listenSocket, (SOCKADDR *)&serverAddr, sizeof(serverAddr));
-	if (retVal == SOCKET_ERROR) err_quit((char *)"bind()");
+	if (retVal == SOCKET_ERROR) NETWORK_UTIL::ERROR_QUIT((char *)"bind()");
 
 	// Listen()!
 	retVal = listen(listenSocket, SOMAXCONN);
-	if (retVal == SOCKET_ERROR) err_quit((char *)"listen()");
+	if (retVal == SOCKET_ERROR) NETWORK_UTIL::ERROR_QUIT((char *)"listen()");
 
 	printf(" [System] Dedicated server activated!\n\n");
 }
+
 
 //Run
 void IOCPServer::AcceptProcess()
@@ -145,7 +219,7 @@ void IOCPServer::AcceptProcess()
 		clientSocket = accept(listenSocket, (SOCKADDR *)&clientAddr, &addrLength);
 		if (clientSocket == INVALID_SOCKET)
 		{
-			err_display((char *)"accept()");
+			NETWORK_UTIL::ERROR_DISPLAY((char *)"accept()");
 			break;
 		}
 
@@ -184,13 +258,14 @@ void IOCPServer::AcceptProcess()
 		{
 			if (WSAGetLastError() != ERROR_IO_PENDING)
 			{
-				err_display((char *)"WSARecv()");
+				NETWORK_UTIL::ERROR_DISPLAY((char *)"WSARecv()");
 			}
 
 			continue;
 		}
 	}
 }
+
 
 //Close
 void IOCPServer::DestroyAndClean()
@@ -220,12 +295,16 @@ DWORD WINAPI IOCPServer::WorkerThread(LPVOID arg)
 
 void IOCPServer::WorkerThreadFunction()
 {
+	// 한 번만 선언해서 여러번 씁시다.
 	int retVal{};
 	int recvType{};
+	DWORD flags = 0;
+	DWORD recvBytes{};
+	DWORD sendBytes{};
 
 	while (7)
 	{
-		//std::cout << "W";
+		//std::cout << "Wait Threa";
 #pragma region [ Wait For Thread ]
 		//비동기 입출력 기다리기
 		DWORD cbTransferred;
@@ -241,7 +320,7 @@ void IOCPServer::WorkerThreadFunction()
 			INFINITE // 대기 시간 -> 깨울떄 까지 무한대
 		);
 #pragma endregion
-		//std::cout << "F" << std::endl;
+		//std::cout << "Thread Fire!!" << std::endl;
 #pragma region [ Get Socket and error Exception ]
 
 		// 할당받은 소켓 즉! 클라이언트 정보 얻기
@@ -259,7 +338,7 @@ void IOCPServer::WorkerThreadFunction()
 			{
 				DWORD temp1, temp2;
 				WSAGetOverlappedResult(ptr->sock, &ptr->overlapped, &temp1, FALSE, &temp2);
-				err_display((char *)"WSAGetOverlappedResult()");
+				NETWORK_UTIL::ERROR_DISPLAY((char *)"WSAGetOverlappedResult()");
 			}
 			closesocket(ptr->sock);
 
@@ -280,10 +359,6 @@ void IOCPServer::WorkerThreadFunction()
 			ptr->wsabuf.buf = ptr->buf;
 			ptr->wsabuf.len = BUF_SIZE;
 
-			// 비동기 입출력의 시작
-			DWORD flags = 0;
-			DWORD recvBytes{};
-
 			retVal = WSARecv(clientSocket, &ptr->wsabuf, 1, &recvBytes, &flags, &ptr->overlapped, NULL);
 			// 클라이언트 소켓, 읽을 데이터 버퍼의 포인터, 데이터 입력 버퍼의 개수, recv 결과 읽은 바이트 수, IOCP에서는 비동기 방식으로 사용하지 않으므로 nullPtr를 넘겨도 무방,  recv에 사용될 플래그,
 			// overlapped구조체의 포인터, IOCP에서는 사용하지 않으므로 NULL, nullptr넘겨도 무방
@@ -292,10 +367,11 @@ void IOCPServer::WorkerThreadFunction()
 			{
 				if (WSAGetLastError() != ERROR_IO_PENDING)
 				{
-					err_display((char *)"WSARecv()");
+					NETWORK_UTIL::ERROR_DISPLAY((char *)"WSARecv()");
 				}
 				continue;
 			}
+
 		}
 		else if (ptr->isRecvTrue)
 		{
@@ -389,6 +465,8 @@ void IOCPServer::WorkerThreadFunction()
 				selfControl = 0;
 				}
 				*/
+
+				// LoginScene
 				if (recvType == DEMAND_LOGIN)
 				{
 					DemandLoginCharStruct demandLogin = (DemandLoginCharStruct&)(ptr->buf[4]);
@@ -409,95 +487,18 @@ void IOCPServer::WorkerThreadFunction()
 							// 데이터 준비
 							ptr->dataBuffer = new PermitLoginStruct(outWinCount, outLoseCount, outMoney);
 							//permitLoginStruct* a = static_cast<PermitLoginStruct *>(ptr->dataBuffer);
-							ZeroMemory(&ptr->overlapped, sizeof(ptr->overlapped));
 
-							int buffer = PERMIT_LOGIN;
-							memcpy(ptr->buf, (char*)&buffer, sizeof(int));
-							memcpy(ptr->buf + 4, (char*)ptr->dataBuffer, sizeof(PermitLoginStruct));
-
-							ptr->dataSize = sizeof(int) + sizeof(PermitLoginStruct);
-
-							//데이터 바인드
-							ptr->wsabuf.buf = ptr->buf; // ptr->buf;
-							ptr->wsabuf.len = ptr->dataSize;
-
-							// 다음 통신 준비
-							ptr->bufferProtocol = END_SEND;
-							ptr->isRecvTrue = true;
-
-							DWORD sendBytes;
-							retVal = WSASend(ptr->sock, &ptr->wsabuf, 1, &sendBytes, 0, &ptr->overlapped, NULL);
-
-							if (retVal == SOCKET_ERROR)
-							{
-								if (WSAGetLastError() != WSA_IO_PENDING)
-								{
-									err_display((char *)"WSASend()");
-								}
+							if (NETWORK_UTIL::SendProcess(ptr, sizeof(int) + sizeof(PermitLoginStruct), PERMIT_LOGIN))
 								continue;
-							}
 						}
 						else if (failReason) {
 							std::cout << "로그인에 실패했습니다.  해당 사유는 : " << failReason << std::endl;
 
 							// 데이터 준비
-							ZeroMemory(&ptr->overlapped, sizeof(ptr->overlapped));
+							ptr->dataBuffer = new FailLoginStruct(failReason);
 
-							int buffer = FAIL_LOGIN;
-							memcpy(ptr->buf, (char*)(&buffer), sizeof(buffer));
-							memcpy(ptr->buf + 4, (char*)(&failReason), sizeof(int));
-
-							ptr->dataSize = 8; // 4+ 4
-
-											   // 데이터 바인딩
-							ptr->wsabuf.buf = ptr->buf; // ptr->buf;
-							ptr->wsabuf.len = ptr->dataSize;
-
-							// 다음 통신 준비
-							ptr->bufferProtocol = END_SEND;
-							ptr->isRecvTrue = true;
-
-							// 데이터 전송
-							DWORD sendBytes;
-							retVal = WSASend(ptr->sock, &ptr->wsabuf, 1, &sendBytes, 0, &ptr->overlapped, NULL);
-							if (retVal == SOCKET_ERROR)
-							{
-								if (WSAGetLastError() != WSA_IO_PENDING)
-								{
-									err_display((char *)"WSASend()");
-								}
+							if (NETWORK_UTIL::SendProcess(ptr, sizeof(int) + sizeof(FailLoginStruct), FAIL_LOGIN))
 								continue;
-							}
-
-							/*
-							// 데이터 준비
-							ptr->dataBuffer = new BaseSendStruct(failReason, (new FailLoginStruct(failReason)));
-							ZeroMemory(&ptr->overlapped, sizeof(ptr->overlapped));
-
-							int buffer = FAIL_LOGIN;
-							memcpy(ptr->buf, (char*)&buffer, sizeof(buffer));
-							ptr->dataSize = sizeof(buffer);
-
-							// 데이터 바인딩
-							ptr->wsabuf.buf = ptr->buf; // ptr->buf;
-							ptr->wsabuf.len = ptr->dataSize;
-
-							// 다음 통신 준비
-							ptr->bufferProtocol = FAIL_LOGIN;
-							ptr->isRecvTrue = false;
-
-							// 데이터 전송
-							DWORD sendBytes;
-							retVal = WSASend(ptr->sock, &ptr->wsabuf, 1, &sendBytes, 0, &ptr->overlapped, NULL);
-							if (retVal == SOCKET_ERROR)
-							{
-							if (WSAGetLastError() != WSA_IO_PENDING)
-							{
-							err_display((char *)"WSASend()");
-							}
-							continue;
-							}
-							*/
 						}
 					}
 					else if (demandLogin.type == 2) //회원가입 처리입니다.
@@ -514,103 +515,34 @@ void IOCPServer::WorkerThreadFunction()
 							isSaveOn = true;
 
 							// 데이터 준비
-							ZeroMemory(&ptr->overlapped, sizeof(ptr->overlapped));
-							int buffer = PERMIT_LOGIN;
-							memcpy(ptr->buf, (char*)&buffer, sizeof(buffer));
-							buffer = 0; // 새로 회원 가입 시, 승리, 패배, 돈은 항상 ㅇ임 // 굳이 안보내도 되지만 일단 보내겠음 돈 줄수도 있으니까!
-										//잊지마 4등록
-							memcpy(ptr->buf + 4, (char*)&buffer, sizeof(buffer));
-							memcpy(ptr->buf + 8, (char*)&buffer, sizeof(buffer));
-							memcpy(ptr->buf + 12, (char*)&buffer, sizeof(buffer));
+							ptr->dataBuffer = new PermitLoginStruct(0, 0, 0);
 
-							ptr->dataSize = 16;
-
-							// 데이터 바인딩
-							ptr->wsabuf.buf = ptr->buf; // ptr->buf;
-							ptr->wsabuf.len = ptr->dataSize;
-
-							// 다음 데이터 준비
-							ptr->bufferProtocol = END_SEND;
-							ptr->isRecvTrue = true;
-
-							// 데이터 전송
-							DWORD sendBytes;
-							retVal = WSASend(ptr->sock, &ptr->wsabuf, 1, &sendBytes, 0, &ptr->overlapped, NULL);
-							if (retVal == SOCKET_ERROR)
-							{
-								if (WSAGetLastError() != WSA_IO_PENDING)
-								{
-									err_display((char *)"WSASend()");
-								}
+							if (NETWORK_UTIL::SendProcess(ptr, sizeof(int) + sizeof(PermitLoginStruct), PERMIT_LOGIN))
 								continue;
-							}
 						}
 						else if (failReason) {
 
 							std::cout << "회원가입에 실패했습니다.  해당 사유는 : " << failReason << std::endl;
 
 							// 데이터 준비
-							ZeroMemory(&ptr->overlapped, sizeof(ptr->overlapped));
-							int buffer = FAIL_LOGIN;
-							memcpy(ptr->buf, (char*)&buffer, sizeof(buffer));
-							memcpy(ptr->buf + 4, (char*)&failReason, sizeof(buffer));
+							ptr->dataBuffer = new FailLoginStruct(failReason);
 
-							ptr->dataSize = 8;
-
-							// 데이터 바인딩
-							ptr->wsabuf.buf = ptr->buf; // ptr->buf;
-							ptr->wsabuf.len = ptr->dataSize;
-
-							// 다음 전송 데이터 준비
-							ptr->bufferProtocol = END_SEND;
-							ptr->isRecvTrue = true;
-
-							// 데이터 전송
-							DWORD sendBytes;
-							retVal = WSASend(ptr->sock, &ptr->wsabuf, 1, &sendBytes, 0, &ptr->overlapped, NULL);
-							if (retVal == SOCKET_ERROR)
-							{
-								if (WSAGetLastError() != WSA_IO_PENDING)
-								{
-									err_display((char *)"WSASend()");
-								}
+							if (NETWORK_UTIL::SendProcess(ptr, sizeof(int) + sizeof(FailLoginStruct), FAIL_LOGIN))
 								continue;
-							}
 						}
 					}
 				}
+				
+				//LobbyScene
 				else if (recvType == DEMAND_MAKEROOM)
 				{
 					ptr->roomIndex = roomData.CreateRoom(ptr->userIndex);
-
 					ptr->isHost = true;
 
-					ZeroMemory(&ptr->overlapped, sizeof(ptr->overlapped));
-					int buffer = PERMIT_MAKEROOM;
-					memcpy(ptr->buf, (char*)&buffer, sizeof(int));
-					memcpy(ptr->buf + 4, (char*)&(ptr->roomIndex), sizeof(int));
+					ptr->dataBuffer = new PermitMakeRoomStruct(ptr->roomIndex);
 
-					ptr->dataSize = sizeof(int) + sizeof(int); // 8
-
-															   //데이터 바인드
-					ptr->wsabuf.buf = ptr->buf; // ptr->buf;
-					ptr->wsabuf.len = ptr->dataSize;
-
-					// 다음 통신 준비
-					ptr->bufferProtocol = END_SEND;
-					ptr->isRecvTrue = true;
-
-					DWORD sendBytes;
-					retVal = WSASend(ptr->sock, &ptr->wsabuf, 1, &sendBytes, 0, &ptr->overlapped, NULL);
-
-					if (retVal == SOCKET_ERROR)
-					{
-						if (WSAGetLastError() != WSA_IO_PENDING)
-						{
-							err_display((char *)"WSASend()");
-						}
+					if (NETWORK_UTIL::SendProcess(ptr, sizeof(int) + sizeof(PermitMakeRoomStruct), PERMIT_MAKEROOM))
 						continue;
-					}
 				}
 				else if (recvType == DEMAND_JOINROOM)
 				{
@@ -620,136 +552,41 @@ void IOCPServer::WorkerThreadFunction()
 
 					if (failReasonBuffer)
 					{
-						std::cout << " DEBUGM-3" << roomIndexBuffer << " 방으로의 입장을 실패했습니다. 실패 사유 : " << failReasonBuffer << endl;
+						std::cout << roomIndexBuffer << " 방으로의 입장을 실패했습니다. 실패 사유 : " << failReasonBuffer << endl;
 
-						ZeroMemory(&ptr->overlapped, sizeof(ptr->overlapped));
-						int buffer = FAIL_JOINROOM;
-						memcpy(ptr->buf, (char*)&buffer, sizeof(int));
-						memcpy(ptr->buf + 4, (char*)&failReasonBuffer, sizeof(int));
-						ptr->dataSize = sizeof(int) + sizeof(int); // 8
+						ptr->dataBuffer = new FailJoinRoomStruct(failReasonBuffer);
 
-						ptr->wsabuf.buf = ptr->buf; // ptr->buf;
-						ptr->wsabuf.len = ptr->dataSize;
-
-						// 다음 통신 준비
-						ptr->bufferProtocol = END_SEND;
-						ptr->isRecvTrue = true;
-
-						DWORD sendBytes;
-						retVal = WSASend(ptr->sock, &ptr->wsabuf, 1, &sendBytes, 0, &ptr->overlapped, NULL);
-
-						if (retVal == SOCKET_ERROR)
-						{
-							if (WSAGetLastError() != WSA_IO_PENDING)
-							{
-								err_display((char *)"WSASend()");
-							}
+						if (NETWORK_UTIL::SendProcess(ptr, sizeof(int) + sizeof(FailJoinRoomStruct), FAIL_JOINROOM))
 							continue;
-						}
 					}
 					else
 					{
+						std::cout << roomIndexBuffer << " 번째 방으로의 입장을 성공했습니다. 방장 아이디는 : (error) 비밀입니다. " << endl;
+						
 						ptr->isHost = false;
 						ptr->roomIndex = roomIndexBuffer;
 
-						ZeroMemory(&ptr->overlapped, sizeof(ptr->overlapped));
-						int buffer = PERMIT_JOINROOM;
-						memcpy(ptr->buf, (char*)&buffer, sizeof(int));
+						ptr->dataBuffer = new PermitJoinRoomStruct(roomIndexBuffer, userData.GetUserID(roomData.GetEnemyIndex(ptr->roomIndex, ptr->isHost)));
 
-						memcpy(ptr->buf + 4, (char*)&ptr->roomIndex, sizeof(int));
-
-						string enemyIdBuffer = userData.GetUserID(roomData.GetEnemyIndex(ptr->roomIndex, ptr->isHost));
-						int sizeBuffer = enemyIdBuffer.size();
-						memcpy(ptr->buf + 8, (char*)&(sizeBuffer), sizeof(int));
-
-						for (int i = 0; i < sizeBuffer; ++i) {
-							ptr->buf[12 + i] = enemyIdBuffer[i];
-						}
-
-						ptr->dataSize = sizeof(int) + sizeof(int) + sizeof(int) + sizeBuffer; // 8 + a
-																							  //데이터 바인드
-						ptr->wsabuf.buf = ptr->buf; // ptr->buf;
-						ptr->wsabuf.len = ptr->dataSize;
-
-						// 다음 통신 준비
-						ptr->bufferProtocol = END_SEND;
-						ptr->isRecvTrue = true;
-
-						std::cout << " DEBUGM-4   " << roomIndexBuffer << " 번째 방으로의 입장을 성공했습니다. 방장 아이디는 :  " << ptr->buf[12] << ptr->buf[13] << ptr->buf[14] << ptr->buf[15] << endl;
-
-						DWORD sendBytes;
-						retVal = WSASend(ptr->sock, &ptr->wsabuf, 1, &sendBytes, 0, &ptr->overlapped, NULL);
-
-						if (retVal == SOCKET_ERROR)
-						{
-							if (WSAGetLastError() != WSA_IO_PENDING)
-							{
-								err_display((char *)"WSASend()");
-							}
+						if (NETWORK_UTIL::SendProcess(ptr, sizeof(int) + sizeof(PermitJoinRoomStruct), PERMIT_JOINROOM))
 							continue;
-						}
 					}
 				}
+				
+				//RoomScene
 				else if (recvType == DEMAND_ROOMHOST) {
+					// 게스트가 들어왔을 때,
 					if (roomData.GetAndSetReadyData(ptr->roomIndex, ptr->isHost))
 					{
-						ZeroMemory(&ptr->overlapped, sizeof(ptr->overlapped));
-						int buffer = ROOMSTATE_GUESTIN;
-						memcpy(ptr->buf, (char*)&buffer, sizeof(int));
+						ptr->dataBuffer = new RoomStateGuestInStruct(userData.GetUserID(roomData.GetEnemyIndex(ptr->roomIndex, ptr->isHost)));
 
-						string enemyIdBuffer = userData.GetUserID(roomData.GetEnemyIndex(ptr->roomIndex, ptr->isHost));
-						int sizeBuffer = enemyIdBuffer.size();
-						memcpy(ptr->buf + 4, (char*)&(sizeBuffer), sizeof(int));
-
-						for (int i = 0; i < sizeBuffer; ++i) {
-							ptr->buf[8 + i] = enemyIdBuffer[i];
-						}
-
-						ptr->dataSize = sizeof(int) + sizeof(int) + sizeBuffer; // 8 + a
-																				//데이터 바인드
-						ptr->wsabuf.buf = ptr->buf; // ptr->buf;
-						ptr->wsabuf.len = ptr->dataSize;
-
-						// 다음 통신 준비
-						ptr->bufferProtocol = END_SEND;
-						ptr->isRecvTrue = true;
-
-						DWORD sendBytes;
-						retVal = WSASend(ptr->sock, &ptr->wsabuf, 1, &sendBytes, 0, &ptr->overlapped, NULL);
-
-						if (retVal == SOCKET_ERROR)
-						{
-							if (WSAGetLastError() != WSA_IO_PENDING)
-							{
-								err_display((char *)"WSASend()");
-							}
+						if (NETWORK_UTIL::SendProcess(ptr, sizeof(int) + sizeof(RoomStateGuestInStruct), ROOMSTATE_GUESTIN))
 							continue;
-						}
 					}
+					// 아무도 안들어 왔을 때,
 					else {
-						ZeroMemory(&ptr->overlapped, sizeof(ptr->overlapped));
-						int buffer = ROOMSTATE_VOID;
-						memcpy(ptr->buf, (char*)&buffer, sizeof(int));
-						ptr->dataSize = sizeof(int); // 4
-
-						ptr->wsabuf.buf = ptr->buf; // ptr->buf;
-						ptr->wsabuf.len = ptr->dataSize;
-
-						// 다음 통신 준비
-						ptr->bufferProtocol = END_SEND;
-						ptr->isRecvTrue = true;
-
-						DWORD sendBytes;
-						retVal = WSASend(ptr->sock, &ptr->wsabuf, 1, &sendBytes, 0, &ptr->overlapped, NULL);
-
-						if (retVal == SOCKET_ERROR)
-						{
-							if (WSAGetLastError() != WSA_IO_PENDING)
-							{
-								err_display((char *)"WSASend()");
-							}
+						if (NETWORK_UTIL::SendProcess(ptr, sizeof(int), ROOMSTATE_VOID))
 							continue;
-						}
 					}
 				}
 				else
