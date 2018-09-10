@@ -19,78 +19,108 @@ public class LoginSceneManager : MonoBehaviour {
     public int typeBuffer;
 
     public int failReason;
-
+    public bool isEqualType = false;
     // Use this for initialization
     //   void Start () {
     //   }
+    void Start()
+    {
+        StartParsingServer();
+    }
 
-    // Update is called once per frame
-    //    void Update () {
-    //	}
+    void StartParsingServer()
+    {
+        GameObject.Find("GameCores").transform.Find("NetworkManager").GetComponent<NetworkManager>().ParsingServerIP();
+    }
 
+    public void DrawPleaseUpdateUI()
+    {
+        isEqualType = false ;
+        GameObject.Find("OnoffBuffer").transform.Find("PleaseUpdateButton").gameObject.SetActive(true);
+    }
+
+    public void OffNetworkUI()
+    {
+        isEqualType = true;
+        GameObject.Find("NetworkLoadingUI").SetActive(false);
+    }
+
+    public void QuitApplication()
+    {
+        GameObject.Find("GameCores").transform.Find("ApplicationManager").GetComponent<ApplicationManager>().Quit();
+    }
+
+    // UI에서 부르는 함수
     public void ClickSignInButton()
     {
         // 로그인 버튼 처리입니다.
-
-        typeBuffer = 1;
-
-        IDBuffer = GameObject.Find("ID_InputField").transform.Find("Text").gameObject.GetComponent<Text>().text;
-        PWStringBuffer = GameObject.Find("PW_InputField").transform.Find("Text").gameObject.GetComponent<Text>().text;
-
-        PWBuffer = Int32.Parse(PWStringBuffer);
-
-        Debug.Log("로그인을 시도합니다. ID : " + IDBuffer + "PW : " + PWBuffer);
-
-
-        if (GameObject.Find("GameCores").transform.Find("NetworkManager").GetComponent<NetworkManager>().isOnNetwork)
+        if (isEqualType)
         {
-            GameObject.Find("GameCores").transform.Find("NetworkManager").GetComponent<NetworkManager>().SendData((int)PROTOCOL.DEMAND_LOGIN);
-        }
-        else
-        {
-            // ForOnlyClientTest
-            GameObject.Find("GameCores").transform.Find("NetworkManager").GetComponent<NetworkManager>().ID = "TEST_Account";
-            GameObject.Find("GameCores").transform.Find("NetworkManager").GetComponent<NetworkManager>().PW = 1234;
+            typeBuffer = 1;
 
-            GameObject.Find("GameCores").transform.Find("NetworkManager").GetComponent<NetworkManager>().money = 7777777;
-            GameObject.Find("GameCores").transform.Find("NetworkManager").GetComponent<NetworkManager>().winCount = 0;
-            GameObject.Find("GameCores").transform.Find("NetworkManager").GetComponent<NetworkManager>().loseCount = 0;
+            IDBuffer = GameObject.Find("ID_InputField").transform.Find("Text").gameObject.GetComponent<Text>().text;
+            PWStringBuffer = GameObject.Find("PW_InputField").transform.Find("Text").gameObject.GetComponent<Text>().text;
 
-            PermitLoginProcess();
+            PWBuffer = Int32.Parse(PWStringBuffer);
+
+            Debug.Log("로그인을 시도합니다. ID : " + IDBuffer + "PW : " + PWBuffer);
+
+
+            if (GameObject.Find("GameCores").transform.Find("NetworkManager").GetComponent<NetworkManager>().isOnNetwork)
+            {
+                GameObject.Find("GameCores").transform.Find("NetworkManager").GetComponent<NetworkManager>().SendData((int)PROTOCOL.DEMAND_LOGIN);
+            }
+            else
+            {
+                // ForOnlyClientTest
+                GameObject.Find("GameCores").transform.Find("NetworkManager").GetComponent<NetworkManager>().ID = "TEST_Account";
+                GameObject.Find("GameCores").transform.Find("NetworkManager").GetComponent<NetworkManager>().PW = 1234;
+
+                GameObject.Find("GameCores").transform.Find("NetworkManager").GetComponent<NetworkManager>().money = 7777777;
+                GameObject.Find("GameCores").transform.Find("NetworkManager").GetComponent<NetworkManager>().winCount = 0;
+                GameObject.Find("GameCores").transform.Find("NetworkManager").GetComponent<NetworkManager>().loseCount = 0;
+
+                PermitLoginProcess();
+            }
         }
     }
 
     public void ClickSignUpButton()
     {
-        // 회원 가입 버튼 처리입니다.
-
-        typeBuffer = 2;
-
-        IDBuffer = GameObject.Find("ID_InputField").transform.Find("Text").gameObject.GetComponent<Text>().text;
-        PWStringBuffer = GameObject.Find("PW_InputField").transform.Find("Text").gameObject.GetComponent<Text>().text;
-
-        PWBuffer = Int32.Parse(PWStringBuffer);
-
-        Debug.Log("회원가입을 시도합니다. ID : " + IDBuffer + "PW : " + PWBuffer);
-
-        if (GameObject.Find("GameCores").transform.Find("NetworkManager").GetComponent<NetworkManager>().isOnNetwork)
+        if (isEqualType)
         {
-            GameObject.Find("GameCores").transform.Find("NetworkManager").GetComponent<NetworkManager>().SendData((int)PROTOCOL.DEMAND_LOGIN);
-        }
-        else
-        {
-            // ForOnlyClientTest
-            GameObject.Find("GameCores").transform.Find("NetworkManager").GetComponent<NetworkManager>().ID = "TEST_Account";
-            GameObject.Find("GameCores").transform.Find("NetworkManager").GetComponent<NetworkManager>().PW = 1234;
+            // 회원 가입 버튼 처리입니다.
 
-            GameObject.Find("GameCores").transform.Find("NetworkManager").GetComponent<NetworkManager>().money = 7777777;
-            GameObject.Find("GameCores").transform.Find("NetworkManager").GetComponent<NetworkManager>().winCount = 0;
-            GameObject.Find("GameCores").transform.Find("NetworkManager").GetComponent<NetworkManager>().loseCount = 0;
+            typeBuffer = 2;
 
-            PermitLoginProcess();
+            IDBuffer = GameObject.Find("ID_InputField").transform.Find("Text").gameObject.GetComponent<Text>().text;
+            PWStringBuffer = GameObject.Find("PW_InputField").transform.Find("Text").gameObject.GetComponent<Text>().text;
+
+            PWBuffer = Int32.Parse(PWStringBuffer);
+
+            Debug.Log("회원가입을 시도합니다. ID : " + IDBuffer + "PW : " + PWBuffer);
+
+            if (GameObject.Find("GameCores").transform.Find("NetworkManager").GetComponent<NetworkManager>().isOnNetwork)
+            {
+                GameObject.Find("GameCores").transform.Find("NetworkManager").GetComponent<NetworkManager>().SendData((int)PROTOCOL.DEMAND_LOGIN);
+            }
+            else
+            {
+                // ForOnlyClientTest
+                GameObject.Find("GameCores").transform.Find("NetworkManager").GetComponent<NetworkManager>().ID = "TEST_Account";
+                GameObject.Find("GameCores").transform.Find("NetworkManager").GetComponent<NetworkManager>().PW = 1234;
+
+                GameObject.Find("GameCores").transform.Find("NetworkManager").GetComponent<NetworkManager>().money = 7777777;
+                GameObject.Find("GameCores").transform.Find("NetworkManager").GetComponent<NetworkManager>().winCount = 0;
+                GameObject.Find("GameCores").transform.Find("NetworkManager").GetComponent<NetworkManager>().loseCount = 0;
+
+                PermitLoginProcess();
+            }
         }
     }
 
+
+    // 네트워크에서 Call하는 함수
     public void PermitLoginProcess()
     {
         GameObject.Find("GameCores").transform.Find("NetworkManager").GetComponent<NetworkManager>().ID = IDBuffer;
