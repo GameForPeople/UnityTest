@@ -69,7 +69,7 @@ public:
 public:
 	void Load() 
 	{
-		std::ifstream inFile("UserData.txt", std::ios::in);
+		std::ifstream inFile("UserData/UserData.txt", std::ios::in);
 
 		std::string ID;
 		int PW, winCount, loseCount, Money;
@@ -78,8 +78,12 @@ public:
 		inFile >> userDataCount;
 		player.reserve(userDataCount);
 
+		std::cout << "저장할 플레이어의 수는 " << userDataCount << std::endl;
+
 		for (int i = 0; i < userDataCount; i++) {
 			inFile >> ID >> PW >> winCount >> loseCount >> Money;
+
+			std::cout << ID << PW << winCount << loseCount << Money << endl;
 
 			player.emplace_back(ID, PW, winCount, loseCount, Money);
 		}
