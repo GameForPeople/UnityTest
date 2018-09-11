@@ -56,7 +56,6 @@ public class InGameSceneCameraController : MonoBehaviour {
     }
 
     void FixedUpdate() {
-
         //transform.position = focusTarget.transform.position;
         CameraStateTest();
     }

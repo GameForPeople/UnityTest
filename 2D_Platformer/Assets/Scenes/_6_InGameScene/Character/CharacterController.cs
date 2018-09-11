@@ -5,17 +5,18 @@ using UnityEngine;
 public class CharacterController : MonoBehaviour {
 
     // ---- please Release - Off! ----
-    public bool ON_INSERT_FOR_TEST_PC_KEY = true; 
+    public bool ON_INSERT_FOR_TEST_PC_KEY = false; 
     // -----------------------------
-
 
     float newPosX;
     Vector3 newMove;
 
-    int hp = 1;
+    public int hp = 1;
 
     float speed = 8.0f;
     float jumpPower = 800.0f;
+
+    float deathRotateAngle = 0.0f;
 
     int moveDir = 0; // -1 left, +1 Right, 0 Stop
     public int dirLeftOrRightBuffer = 1; // -1 left, +1 Right
@@ -27,7 +28,7 @@ public class CharacterController : MonoBehaviour {
     bool isOnRight = false;
 
     public bool isOnJumping;
-    public bool isjumpCount = false;
+    public bool isRenewJump = true;
     int jumpTimer = 0;
     public int JUMP_MAX_TIMER = 12;
 
@@ -37,6 +38,9 @@ public class CharacterController : MonoBehaviour {
     bool isMobileOnFire = false;
     bool isMobileOnLeft = false;
     bool isMobileOnRight = false;
+
+    bool networkJumpBuffer = false;
+    bool networkFireBuffer = false;
 
     new Rigidbody2D rigidbody;
     GameObject networkManager;
@@ -75,7 +79,11 @@ public class CharacterController : MonoBehaviour {
             isOnLeft = isMobileOnLeft;
             isOnRight = isMobileOnRight;
         }
+        InputLeftOrRightProcess();
+    }
 
+    void InputLeftOrRightProcess()
+    {
         if (isOnLeft && isOnRight)
         {
             if (moveDir == 1)
@@ -110,27 +118,25 @@ public class CharacterController : MonoBehaviour {
 
     void InputJump()
     {
-        if (ON_INSERT_FOR_TEST_PC_KEY)
+        if (isRenewJump)
         {
-            if (Input.GetButtonDown("Jump"))
+            if (ON_INSERT_FOR_TEST_PC_KEY)
             {
-                if (isjumpCount == false)
+                if (Input.GetButtonDown("Jump"))
                 {
-                    isjumpCount = true; // 더블점프 꺼놈
                     isOnJumping = true;
+                    isRenewJump = false;
                     jumpTimer = JUMP_MAX_TIMER;
                 }
             }
-        }
-        else
-        {
-            if (isMobileOnJump)
+            else
             {
-                if (isjumpCount == false)
+                if (isMobileOnJump)
                 {
-                    isjumpCount = true; // 더블점프 꺼놈
                     isOnJumping = true;
+                    isRenewJump = false;
                     jumpTimer = JUMP_MAX_TIMER;
+                    networkJumpBuffer = true;
                 }
             }
         }
@@ -179,27 +185,43 @@ public class CharacterController : MonoBehaviour {
         rigidbody.MovePosition(transform.position + newMove);
     }
 
-    void Jump()
-    {
-        if (!isOnJumping)
-            return;
-
-        if (jumpTimer > 0)
-        {
-            rigidbody.AddForce(Vector3.up * jumpPower, ForceMode2D.Force);
-            --jumpTimer;
-        }
-        else
-        {
-            isOnJumping = false;
-        }
-    }
-
     // 함수쓰지 말고, 멤버 변수로 직접하자..
     //void SetIsControl(bool InIsOnCOntrol)
     //{
     //    isOnControl = InIsOnCOntrol;
     //}
+    public void RecvDataProcess(float InPosX, float InPosY, bool InInputLeft, bool InInputRight, bool InIsJump, bool InIsFire)
+    {
+        isOnLeft = InInputLeft;
+        isOnRight = InInputRight;
+        InputLeftOrRightProcess();
+
+        transform.position = new Vector2(InPosX, InPosY);
+
+        if (InIsJump)
+        {
+            isRenewJump = false;
+            jumpTimer = JUMP_MAX_TIMER;
+        }
+
+        if (InIsFire)
+        {
+            Fire();
+        }
+    }
+
+    public void SendDataProcess(ref float OutPosX, ref float OutPosY, ref bool OutInputLeft, ref bool OutInputRight, ref bool OutIsJump, ref bool OutIsFire)
+    {
+        OutInputLeft = isOnLeft;
+        OutInputRight = isOnRight;
+        OutIsJump = networkJumpBuffer;
+        OutIsFire = networkFireBuffer;
+        OutPosX = transform.position.x;
+        OutPosY = transform.position.y;
+
+        networkJumpBuffer = false;
+        networkFireBuffer = false;
+    }
 
     public void MobileInputJump(bool InBoolValue)
     {
@@ -235,15 +257,47 @@ public class CharacterController : MonoBehaviour {
 
     void OnTriggerEnter2D(Collider2D other)
     {
-        // 이게 뭔 소리지...? 변수명이 쫌 이상해... isJumpCount...? --> 요고 코루틴으로 변경해야징
+        // 점프 중일 때, 만약 떨어지는 중이면
         if (!isOnJumping)
         {
-            if (other.gameObject.layer == 8)
-            {
-                isjumpCount = false;
-            }
+            //점프를 한번 갱신할 수 있습니다.
+            isRenewJump = true;
         }
     }
+
+    void Jump()
+    {
+        //----
+        //isOnJumping = true;
+        //isRenewJump = false;
+        //jumpTimer = JUMP_MAX_TIMER;
+        //----
+        //StartCoroutine("JumpCoroutine");
+        if (isRenewJump)
+            return;
+
+        if (jumpTimer > 0)
+        {
+            rigidbody.AddForce(Vector3.up * jumpPower, ForceMode2D.Force);
+            --jumpTimer;
+        }
+        else
+        {
+            isOnJumping = false;
+        }
+    }
+
+    //IEnumerator JumpCoroutune()
+    //{
+    //    while (jumpTimer > 0)
+    //    {
+    //        rigidbody.AddForce(Vector3.up * jumpPower, ForceMode2D.Force);
+    //        --jumpTimer;
+    //
+    //        yield return new WaitForSeconds(1.0f / 60.0f);
+    //    }
+    //    isOnJumping = false;
+    //}
 
     void Fire()
     {
@@ -253,11 +307,30 @@ public class CharacterController : MonoBehaviour {
     IEnumerator FireCoolTimeCoroutine()
     {
         isOnFire = true;
+        networkFireBuffer = true;
 
         inGameSceneManager.GetComponent<InGameSceneManager>().PlayerAttack(realCharacterIndex, dirLeftOrRightBuffer, transform.position);
 
-        yield return new WaitForSeconds(1.0f);
+        yield return new WaitForSeconds(0.5f);
 
         isOnFire = false;
+    }
+
+    public void Death()
+    {
+        hp = 0;
+        StartCoroutine("DeathAnimationCoroutine");
+    }
+
+    IEnumerator DeathAnimationCoroutine()
+    {
+        while(deathRotateAngle < 90.0f)
+        {
+            deathRotateAngle += 2.0f;
+
+            transform.rotation = Quaternion.Euler(new Vector3(0, 0, deathRotateAngle));
+            
+            yield return new WaitForSeconds(1.0f / 60.0f);
+        }
     }
 }

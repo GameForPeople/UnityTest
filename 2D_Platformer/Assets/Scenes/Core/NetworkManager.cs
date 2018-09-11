@@ -14,6 +14,7 @@ using System.Linq;
 using System.Runtime.Serialization.Formatters.Binary;
 using System.IO;
 
+using UnityEngine.Networking;
 
 // 아직 코드 보지 마세요....테스트 코드라.. 리팩토링 안해서 눈 썩어요..
 // 클라이언트 현재 네트워크 동기방식 -> 턴제라 그냥 써도 될듯 한데, 프레임 드랍 등, 문제되면 비동기방식으로 변경 필요
@@ -31,7 +32,10 @@ enum PROTOCOL : int
     DEMAND_ROOMHOST     =   400   ,
     ROOMSTATE_VOID      =   410   ,
     ROOMSTATE_GUESTIN   =   411   ,
-    DEMAND_GAMESTATE    =   500   
+    SEND_GAMESTATE      =   500   ,
+    SEND_VOIDGAMESTATE  =   501   ,
+    RECV_GAMESTATE      =   502   ,
+    RECV_VOIDGAMESTATE  =   503   ,
 };
 
 public class NetworkManager : MonoBehaviour
@@ -70,14 +74,14 @@ public class NetworkManager : MonoBehaviour
         [MarshalAs(UnmanagedType.ByValArray, SizeConst = 20)] public char[] data;
     }
 
-
-    private const string iP_ADDRESS = "119.193.229.172";
+    private string iP_ADDRESS;
     private const int SERVER_PORT = 9000;
+    private const string CLIENT_VERSION = "180909";
 
     public Thread thread;
     public Socket socket;
 
-    public bool isRecvOn = false;
+    public bool isRecvOn = true;
     public int recvType = 0;
     public int sendType = 0;
 
@@ -100,7 +104,12 @@ public class NetworkManager : MonoBehaviour
     public byte[] DataRecvBuffer = new byte[100];
     public byte[] DataSendBuffer = new byte[8];
 
+    public byte[] inGameSceneDataBuffer = new byte[16];
+
     public object _obj = new object();
+
+    // init In inGameScene Start();
+    public GameObject inGameScenemanager;
 
     //public GameObject m_scenenManager;
 
@@ -172,7 +181,6 @@ public class NetworkManager : MonoBehaviour
        //     isRecvOn = false;
        // }
     }
-
     //[ComVisibleAttribute(true)]
     public void StructToBytes(object obj, ref byte[] packet)
     {
@@ -197,11 +205,26 @@ public class NetworkManager : MonoBehaviour
     {
         if (isOnNetwork)
         {
-            if (InMsg == (int)PROTOCOL.DEMAND_GAMESTATE)
+            if (InMsg == (int)PROTOCOL.SEND_GAMESTATE)
             {
-                byte[] sendDamandGameState = BitConverter.GetBytes((int)400);
-                socket.Send(sendDamandGameState);
+                Buffer.BlockCopy(BitConverter.GetBytes((int)PROTOCOL.SEND_GAMESTATE), 0, inGameSceneDataBuffer, 0, 4);
+
+                // char InPosX, char InPosY, bool InInputLeft, bool InInputRight, bool InIsJump, bool InIsFire, 
+                Buffer.BlockCopy(BitConverter.GetBytes(inGameScenemanager.GetComponent<InGameSceneManager>().outCharX), 0, inGameSceneDataBuffer, 4, 4);
+                Buffer.BlockCopy(BitConverter.GetBytes(inGameScenemanager.GetComponent<InGameSceneManager>().outCharY), 0, inGameSceneDataBuffer, 8, 4);
+                Buffer.BlockCopy(BitConverter.GetBytes(inGameScenemanager.GetComponent<InGameSceneManager>().outInputLeft), 0, inGameSceneDataBuffer, 12, 1);
+                Buffer.BlockCopy(BitConverter.GetBytes(inGameScenemanager.GetComponent<InGameSceneManager>().outInputRight), 0, inGameSceneDataBuffer, 13, 1);
+                Buffer.BlockCopy(BitConverter.GetBytes(inGameScenemanager.GetComponent<InGameSceneManager>().outIsJump), 0, inGameSceneDataBuffer, 14, 1);
+                Buffer.BlockCopy(BitConverter.GetBytes(inGameScenemanager.GetComponent<InGameSceneManager>().outIsFire), 0, inGameSceneDataBuffer, 15, 1);
+
+                socket.Send(inGameSceneDataBuffer);
             }
+            else if (InMsg == (int)PROTOCOL.SEND_VOIDGAMESTATE)
+            {
+                Buffer.BlockCopy(BitConverter.GetBytes((int)PROTOCOL.SEND_GAMESTATE), 0, DataSendBuffer, 0, 4);
+                socket.Send(DataSendBuffer);
+            }
+
             else if (InMsg == (int)PROTOCOL.DEMAND_LOGIN)
             {
                 DemandLoginStruct demandLogin = new DemandLoginStruct
@@ -274,9 +297,20 @@ public class NetworkManager : MonoBehaviour
 
     public void ProcessRecvData()
     {
-        if (recvType > (int)PROTOCOL.DEMAND_GAMESTATE)
+        if (recvType == (int)PROTOCOL.RECV_GAMESTATE)
         {
-           
+            inGameScenemanager.GetComponent<InGameSceneManager>().RecvDataProcess(
+                BitConverter.ToSingle(DataRecvBuffer, 4),
+                BitConverter.ToSingle(DataRecvBuffer, 8),
+                BitConverter.ToBoolean(DataRecvBuffer, 12),
+                BitConverter.ToBoolean(DataRecvBuffer, 13),
+                BitConverter.ToBoolean(DataRecvBuffer, 14),
+                BitConverter.ToBoolean(DataRecvBuffer, 15)
+                );
+        }
+        else if (recvType == (int)PROTOCOL.RECV_VOIDGAMESTATE)
+        {
+
         }
         else if (recvType == (int)PROTOCOL.FAIL_LOGIN)
         {
@@ -337,6 +371,59 @@ public class NetworkManager : MonoBehaviour
         }
 
         recvType = 0;
+    }
+
+    public void ParsingServerIP()
+    {
+        StartCoroutine(ParsingServerIPCoroutine());
+    }
+
+    IEnumerator ParsingServerIPCoroutine()
+    {
+        UnityWebRequest www = UnityWebRequest.Get("http://koreagamemaker.wixsite.com/hsld-server");  //http://koreagamemaker.wixsite.com/hsld-server //https://github.com/GameForPeople/TeamHSLD/blob/master/.gitignore
+        yield return www.SendWebRequest();
+
+        if (www.isNetworkError || www.isHttpError)
+        {
+            Debug.Log(www.error);
+        }
+        else
+        {
+            // Show results as text
+            int index1 = www.downloadHandler.text.IndexOf("Server IP : ") + 12;
+            int index2 = www.downloadHandler.text.IndexOf(".HSLD", index1);
+
+            iP_ADDRESS = www.downloadHandler.text.Substring(index1, index2 - index1);
+            // Or retrieve results as binary data
+            Debug.Log("Server의 IP는 : " + iP_ADDRESS);
+
+            int index3 = www.downloadHandler.text.IndexOf("Ver : ", index2);
+
+            string parsingClientVerStringBuffer = www.downloadHandler.text.Substring(index3 + 6, 6);
+            
+            Debug.Log("Client의 Ver는 : " + parsingClientVerStringBuffer);
+
+            bool isVersionEquals = String.Equals(parsingClientVerStringBuffer, CLIENT_VERSION);
+
+            Debug.Log("Version Test 결과는 : " + isVersionEquals);
+
+            VersionTest(isVersionEquals);
+
+        }
+    }
+
+    void VersionTest(bool isVersionEquals)
+    {
+        GameObject.Find("LoginSceneManager").GetComponent<LoginSceneManager>().OffNetworkUI();
+
+        if (isVersionEquals)
+        {
+            StartNetworkFunction();
+        }
+        else
+        {
+            GameObject.Find("LoginSceneManager").GetComponent<LoginSceneManager>().DrawPleaseUpdateUI();
+        }
     }
 }
 
