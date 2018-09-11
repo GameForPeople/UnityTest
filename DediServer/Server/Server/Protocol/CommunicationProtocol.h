@@ -130,11 +130,21 @@ struct DemandJoinRoomStruct : public BaseStruct {
 struct PermitJoinRoomStruct : public BaseStruct {
 	int roomIndex;
 	int idSize;
-	string enemyId;
+	//string enemyId;
+	//const char* enemyId;
+	char enemyId[20];
+
+	//__inline PermitJoinRoomStruct(int InRoomIndex, string InEnemyID)
+	//	: roomIndex(InRoomIndex), idSize(InEnemyID.size()), enemyId(InEnemyID.c_str())
+	//{};
 
 	__inline PermitJoinRoomStruct(int InRoomIndex, string InEnemyID)
-		: roomIndex(InRoomIndex), idSize(InEnemyID.size()), enemyId(InEnemyID)
-	{};
+		: roomIndex(InRoomIndex), idSize(InEnemyID.size())
+	{
+		for (int i = 0; i < idSize; ++i) {
+			enemyId[i] = InEnemyID[i];
+		}
+	};
 
 	__inline PermitJoinRoomStruct() = default;
 	__inline ~PermitJoinRoomStruct() = default;
@@ -155,11 +165,20 @@ struct FailJoinRoomStruct : public BaseStruct {
 struct RoomStateGuestInStruct : public BaseStruct
 {
 	int idSize;
-	string enemyId;
+	//string enemyId;
+	//const char* enemyId;
+	char enemyId[20];
 
-	__inline RoomStateGuestInStruct(string InEnemyID)
-		: idSize(InEnemyID.size()), enemyId(InEnemyID)
-	{};
+	//__inline RoomStateGuestInStruct(string InEnemyID)
+	//	: idSize(InEnemyID.size()), enemyId(InEnemyID.c_str())
+	//{};
+
+	__inline RoomStateGuestInStruct(string InEnemyID) : idSize(InEnemyID.size())
+	{
+		for (int i = 0; i < idSize; ++i){
+			enemyId[i] = InEnemyID[i];
+		}
+	}; 
 
 	__inline RoomStateGuestInStruct() = default;
 	__inline ~RoomStateGuestInStruct() = default;
