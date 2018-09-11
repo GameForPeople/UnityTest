@@ -589,6 +589,36 @@ void IOCPServer::WorkerThreadFunction()
 							continue;
 					}
 				}
+				
+				//InGameScene
+				else if (recvType == SEND_GAMESTATE)
+				{
+					roomData.SaveClientData(ptr->roomIndex, ptr->isHost, (InGameDataStruct&)(ptr->buf[4]));
+					
+					float outPosX, outPosY;
+					bool outLeft, outRight, outJump, outFire;
+
+					roomData.GetClientData(ptr->roomIndex, ptr->isHost, 
+						outPosX, outPosY, outLeft, outRight, outJump, outFire);
+					
+					ptr->dataBuffer = new InGameDataStruct(outPosX, outPosY, outLeft, outRight, outJump, outFire);
+
+					if (NETWORK_UTIL::SendProcess(ptr, sizeof(int) + sizeof(InGameDataStruct), RECV_GAMESTATE))
+						continue;
+				}
+				else if (recvType == SEND_VOIDGAMESTATE)
+				{
+					float outPosX, outPosY;
+					bool outLeft, outRight, outJump, outFire;
+
+					roomData.GetClientData(ptr->roomIndex, ptr->isHost,
+						outPosX, outPosY, outLeft, outRight, outJump, outFire);
+
+					ptr->dataBuffer = new InGameDataStruct(outPosX, outPosY, outLeft, outRight, outJump, outFire);
+
+					if (NETWORK_UTIL::SendProcess(ptr, sizeof(int) + sizeof(InGameDataStruct), RECV_GAMESTATE))
+						continue;
+				}
 				else
 				{
 					std::cout << "Not! Defined recvType Error  recvType == " << recvType << std::endl;

@@ -17,7 +17,10 @@ enum Protocol {
 	DEMAND_ROOMHOST		=	400	,
 	ROOMSTATE_VOID		=	410	,
 	ROOMSTATE_GUESTIN	=	411	,
-	DEMAND_GAMESTATE	=	500
+	SEND_GAMESTATE		=	500	,
+	SEND_VOIDGAMESTATE	=	501	,
+	RECV_GAMESTATE		=	502	,
+	RECV_VOIDGAMESTATE	=	503	
 };
 
 enum class SCENE_NAME {
@@ -173,4 +176,68 @@ struct OnePlayerChanged : public BaseStruct
 	{
 		mixedData = InLeftOrRight * 10 + isJumping;
 	};
+};
+
+struct InGameDataStruct : public BaseStruct{
+	float	posX;
+	float	posY;
+	bool	isOnLeft;
+	bool	isOnRight;
+	bool	isOnJump;
+	bool	isOnFire;
+
+	__inline InGameDataStruct() = default;
+	
+	__inline InGameDataStruct(float InPosX, float InPosY, bool IsOnLeft, bool IsOnRight, 
+		bool IsOnJump, bool IsOnFire)
+	{}
+
+	__inline ~InGameDataStruct() = default;
+
+	__inline void SetValues(const float InPosX, const float InPosY, const bool InIsOnLeft, const bool InIsOnRight, const bool InIsOnJump, const bool InIsOnFire)
+	{
+		posX = InPosX;
+		posY = InPosY;
+		isOnLeft = InIsOnLeft;
+		isOnRight = InIsOnRight;
+
+		if (InIsOnJump)
+			isOnJump = InIsOnJump;
+
+		if (InIsOnFire)
+			isOnFire = InIsOnFire;
+	}
+	__inline void SetValues(InGameDataStruct InStruct)
+	{
+		posX = InStruct.posX;
+		posY = InStruct.posY;
+		isOnLeft = InStruct.isOnLeft;
+		isOnRight = InStruct.isOnRight;
+
+		if (InStruct.isOnJump)
+			isOnJump = InStruct.isOnJump;
+
+		if (InStruct.isOnFire)
+			isOnFire = InStruct.isOnFire;
+	}
+
+	__inline void GetValues(float& OutPosX, float& OutPosY, bool& OutIsOnLeft, bool& OutIsOnRight, bool& OutIsOnJump, bool& OutIsOnFire)
+	{
+		OutPosX = posX;
+		OutPosY = posY;
+		OutIsOnLeft = isOnLeft;
+
+		OutIsOnRight = isOnRight;
+		OutIsOnJump = isOnJump;
+		OutIsOnFire = isOnFire;
+
+		isOnJump = false;
+		isOnFire = false;
+	}
+	__inline InGameDataStruct* GetThis()
+	{
+		//isOnJump = false;
+		//isOnFire = false;
+		return this;
+	}
 };

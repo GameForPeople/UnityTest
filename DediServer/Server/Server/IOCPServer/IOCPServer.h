@@ -153,12 +153,13 @@ private:
 	//Close
 	void DestroyAndClean();
 
+
+private:
+	
 	//ThreadFunction
 	static DWORD WINAPI WorkerThread(LPVOID arg);
 	void WorkerThreadFunction();
 	static DWORD WINAPI SaveUserDate(LPVOID arg);
 	void SaveUserDataThreadFunction();
-
-private:
 
 };
