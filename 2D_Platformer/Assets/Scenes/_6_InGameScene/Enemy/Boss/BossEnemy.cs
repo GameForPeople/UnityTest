@@ -1,14 +1,16 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.UI;
 
 public class BossEnemy : MonoBehaviour
 {
-
-    int hp;
+    public int hp;
 
     int nowLocationPoint = 0;
     int nextLocationPoint = 0;
+
+    int moveDirLeftOrRight = 1;
 
     public Vector2[] locationPoint = new Vector2[4];
     Vector2 moveDirection;
@@ -20,14 +22,32 @@ public class BossEnemy : MonoBehaviour
     new Rigidbody2D rigidbody;
     Animator animator;
 
+    GameObject inGameSceneManager;
+
+    public Slider hpSlider;
+
+    public bool isOnUpdate = true;
     // Use this for initialization
     void Start()
     {
-        hp = 50;
+        hp = 30;
         rigidbody = gameObject.GetComponent<Rigidbody2D>();
         animator = gameObject.GetComponentInChildren<Animator>();
 
+        inGameSceneManager = GameObject.Find("InGameSceneManager");
+
         StartCoroutine("BossAction");
+
+        //hpSlider.transform.position = new Vector3(-1000 , -1000, -50);
+    }
+
+    void Update()
+    {
+        if (isOnUpdate)
+        {
+            hpSlider.maxValue = 30;
+            hpSlider.value = hp;
+        }
     }
 
     void FixedUpdate()
@@ -50,7 +70,7 @@ public class BossEnemy : MonoBehaviour
         while (hp > 0)
         {
             // 공격 중, 이동하는 경우의 문제 막음
-            yield return new WaitForSeconds(1.0f);
+            yield return new WaitForSeconds(3.0f);
 
             StartMoveToPoint();
 
@@ -114,10 +134,12 @@ public class BossEnemy : MonoBehaviour
     {
         if (nextLocationPoint == 2 || nextLocationPoint == 3)
         {
+            moveDirLeftOrRight = -1;
             transform.localScale = new Vector3(-2, 2, 1);
         }
         else if (nextLocationPoint == 0 || nextLocationPoint == 1)
         {
+            moveDirLeftOrRight = 1;
             transform.localScale = new Vector3(2, 2, 1);
         }
     }
@@ -127,16 +149,15 @@ public class BossEnemy : MonoBehaviour
         if (Random.Range(0, 2) == 0)
         {
             animator.SetBool("IsSuperAttack", true);
-
-            
+            inGameSceneManager.GetComponent<InGameSceneManager>().BossAttack(1, transform.position, moveDirLeftOrRight);
 
             return 1;
         }
         else
         {
-           animator.SetBool("IsNormalAttack", true);
+            animator.SetBool("IsNormalAttack", true);
 
-
+            inGameSceneManager.GetComponent<InGameSceneManager>().BossAttack(2, transform.position, moveDirLeftOrRight);
 
             return 2;
         }
@@ -151,5 +172,24 @@ public class BossEnemy : MonoBehaviour
         {
             animator.SetBool("IsNormalAttack", false);
         }
+    }
+
+    void OnTriggerEnter2D(Collider2D other)
+    {
+        if (other.gameObject.layer == 10)
+        {
+            hp--;
+            hpSlider.value = hp;
+
+            if (hp <= 0)
+                StartCoroutine("Dead");
+        }
+    }
+
+    IEnumerator Dead()
+    {
+        animator.SetBool("IsDie", true);
+
+        yield return new WaitForSeconds(2.0f);
     }
 }
