@@ -119,7 +119,7 @@ void IOCPServer::PrintServerInfoUI()
 
 	printf("■■■■■■■■■■■■■■■■■■■■■■■■■\n");
 	printf("■ IOCP Server  - Bridge Unity Project          \n");
-	printf("■                                ver 0.1 180815\n");
+	printf("■                                ver 0.6 180912\n");
 	printf("■\n");
 	printf("■    IP Address : %s \n", retIPChar);
 	printf("■    Server Port : %d \n", SERVER_PORT);
@@ -344,6 +344,9 @@ void IOCPServer::WorkerThreadFunction()
 
 			printf("[TCP 서버] 클라이언트 종료 : IP 주소 =%s, 포트 번호 =%d\n",
 				inet_ntoa(clientAddr.sin_addr), ntohs(clientAddr.sin_port));
+
+			userData.SignOut(ptr->userIndex);
+
 			delete ptr;
 			continue;
 		}
@@ -561,12 +564,15 @@ void IOCPServer::WorkerThreadFunction()
 					}
 					else
 					{
-						std::cout << roomIndexBuffer << " 번째 방으로의 입장을 성공했습니다. 방장 아이디는 : (error) 비밀입니다. " << endl;
+						std::cout << roomIndexBuffer << " 번째 방으로의 입장을 성공했습니다. " << endl;
 						
 						ptr->isHost = false;
 						ptr->roomIndex = roomIndexBuffer;
 
 						ptr->dataBuffer = new PermitJoinRoomStruct(roomIndexBuffer, userData.GetUserID(roomData.GetEnemyIndex(ptr->roomIndex, ptr->isHost)));
+						
+						//PermitJoinRoomStruct* a = static_cast<PermitJoinRoomStruct *>(ptr->dataBuffer);
+						//std::cout << "방장의 아이디는 " << a->enemyId << " 아이디의 크기는 " << a->idSize << "입니다." << endl;
 
 						if (NETWORK_UTIL::SendProcess(ptr, sizeof(int) + sizeof(PermitJoinRoomStruct), PERMIT_JOINROOM))
 							continue;
@@ -579,6 +585,9 @@ void IOCPServer::WorkerThreadFunction()
 					if (roomData.GetAndSetReadyData(ptr->roomIndex, ptr->isHost))
 					{
 						ptr->dataBuffer = new RoomStateGuestInStruct(userData.GetUserID(roomData.GetEnemyIndex(ptr->roomIndex, ptr->isHost)));
+
+						//RoomStateGuestInStruct* a = static_cast<RoomStateGuestInStruct *>(ptr->dataBuffer);
+						//std::cout << "방장의 아이디는 " << a->enemyId << " 아이디의 크기는 " << a->idSize << "입니다." << endl;
 
 						if (NETWORK_UTIL::SendProcess(ptr, sizeof(int) + sizeof(RoomStateGuestInStruct), ROOMSTATE_GUESTIN))
 							continue;

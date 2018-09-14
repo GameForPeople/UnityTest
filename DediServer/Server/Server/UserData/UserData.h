@@ -38,6 +38,12 @@ public:
 	__inline ~UserData() {};
 
 public:
+	__inline void SignOut()
+	{
+		m_isLogin = false;
+	}
+
+public:
 	__inline void	SetIPAddress(IN_ADDR& inputAddress) { m_userAddr = inputAddress; m_isLogin = true; }
 
 	__inline void	PrintUserData() const 
@@ -78,19 +84,16 @@ public:
 		inFile >> userDataCount;
 		player.reserve(userDataCount);
 
-		std::cout << "저장할 플레이어의 수는 " << userDataCount << std::endl;
-
 		for (int i = 0; i < userDataCount; i++) {
 			inFile >> ID >> PW >> winCount >> loseCount >> Money;
 
-			std::cout << ID << PW << winCount << loseCount << Money << endl;
 
 			player.emplace_back(ID, PW, winCount, loseCount, Money);
 		}
 
 		inFile.close();
 
-		std::cout << " [System] Load UserData Complete! " << std::endl << std::endl;
+		std::cout << " [System] Load UserData Complete! " << std::endl;
 	}
 	void Save(bool InIsSave)
 	{
@@ -98,7 +101,7 @@ public:
 			InIsSave = false;
 
 			Sleep(2000);
-			std::ofstream outFile("UserData.txt", std::ios::out);
+			std::ofstream outFile("UserData/UserData.txt", std::ios::out);
 
 			outFile << player.size() << std::endl;
 
@@ -204,6 +207,12 @@ public:
 		}
 		return 0;
 	}
+
+	__inline void SignOut(const int InUserIndex)
+	{
+		player[InUserIndex].SignOut();
+	}
+
 
 	__inline void EmplaceBackToPlayer(string InID, const int InPW, int& RetIndex) {
 		player.emplace_back(InID, InPW);
