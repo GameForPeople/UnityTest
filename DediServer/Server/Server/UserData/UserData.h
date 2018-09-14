@@ -93,7 +93,7 @@ public:
 
 		inFile.close();
 
-		std::cout << " [System] Load UserData Complete! " << std::endl;
+		std::cout << "  [System::Notify] Load UserData Complete! " << std::endl;
 	}
 	void Save(bool InIsSave)
 	{
@@ -115,7 +115,8 @@ public:
 			}
 			outFile.close();
 
-			std::cout << " [System] Save UserData! " << std::endl;
+			std::cout << "  [System::Notify] Save UserData! " << std::endl;
+
 			InIsSave = false;
 
 			Sleep(2000);

@@ -75,6 +75,10 @@ namespace NETWORK_UTIL {
 	}
 };
 
+#ifdef _DEBUG
+
+#endif
+
 //Init
 int IOCPServer::GetExternalIP(char *ip)
 {
@@ -304,7 +308,7 @@ void IOCPServer::WorkerThreadFunction()
 
 	while (7)
 	{
-		//std::cout << "Wait Threa";
+
 #pragma region [ Wait For Thread ]
 		//비동기 입출력 기다리기
 		DWORD cbTransferred;
@@ -320,7 +324,7 @@ void IOCPServer::WorkerThreadFunction()
 			INFINITE // 대기 시간 -> 깨울떄 까지 무한대
 		);
 #pragma endregion
-		//std::cout << "Thread Fire!!" << std::endl;
+
 #pragma region [ Get Socket and error Exception ]
 
 		// 할당받은 소켓 즉! 클라이언트 정보 얻기
@@ -332,8 +336,6 @@ void IOCPServer::WorkerThreadFunction()
 		// 근데 이거 에코서버일떄만 그래야되는거 아니야???? 몰봐 임마 뭘봐 모를수도 있지
 		if (retVal == 0 || cbTransferred == 0)
 		{
-			std::cout << "DEBUG - Error or Exit Client A" << std::endl;
-
 			if (retVal == 0)
 			{
 				DWORD temp1, temp2;
@@ -342,8 +344,11 @@ void IOCPServer::WorkerThreadFunction()
 			}
 			closesocket(ptr->sock);
 
-			printf("[TCP 서버] 클라이언트 종료 : IP 주소 =%s, 포트 번호 =%d\n",
-				inet_ntoa(clientAddr.sin_addr), ntohs(clientAddr.sin_port));
+#ifdef _DEBUG
+			//printf("[TCP 서버] 클라이언트 연결 종료 : IP 주소 =%s, 포트 번호 =%d\n", 
+			//	inet_ntoa(clientAddr.sin_addr), ntohs(clientAddr.sin_port));
+			std::cout << "  [Client::Notify] 클라이언트 연결 종료 // ID : " << userData.GetUserID(ptr->userIndex) << std::endl;
+#endif
 
 			userData.SignOut(ptr->userIndex);
 
@@ -474,7 +479,8 @@ void IOCPServer::WorkerThreadFunction()
 				{
 					DemandLoginCharStruct demandLogin = (DemandLoginCharStruct&)(ptr->buf[4]);
 					demandLogin.ID[demandLogin.IDSize] = '\0';
-					std::cout << "아이디 비밀번호, 타입을 입력 받았습니다. ID:  " << demandLogin.ID << "  PW : " << demandLogin.PW << "  type : " << demandLogin.type << std::endl;
+					
+					//std::cout << "아이디 비밀번호, 타입을 입력 받았습니다. ID:  " << demandLogin.ID << "  PW : " << demandLogin.PW << "  type : " << demandLogin.type << std::endl;
 
 					if (demandLogin.type == 1) //로그인 처리입니다.
 					{
@@ -485,7 +491,8 @@ void IOCPServer::WorkerThreadFunction()
 						int failReason = userData.SignIn(demandLogin.ID, demandLogin.PW, outWinCount, outLoseCount, outMoney, ptr->userIndex);
 
 						if (!failReason) {
-							std::cout << "로그인에 성공했습니다. " << std::endl;
+							
+							//std::cout << "로그인에 성공했습니다. " << std::endl;
 
 							// 데이터 준비
 							ptr->dataBuffer = new PermitLoginStruct(outWinCount, outLoseCount, outMoney);
@@ -495,7 +502,7 @@ void IOCPServer::WorkerThreadFunction()
 								continue;
 						}
 						else if (failReason) {
-							std::cout << "로그인에 실패했습니다.  해당 사유는 : " << failReason << std::endl;
+							//std::cout << "로그인에 실패했습니다.  해당 사유는 : " << failReason << std::endl;
 
 							// 데이터 준비
 							ptr->dataBuffer = new FailLoginStruct(failReason);
@@ -509,7 +516,7 @@ void IOCPServer::WorkerThreadFunction()
 						int failReason = userData.SignUp(demandLogin.ID);
 
 						if (!failReason) {
-							std::cout << "회원가입에 성공했습니다. " << std::endl;
+							//std::cout << "회원가입에 성공했습니다. " << std::endl;
 
 							// 회원 가입 처리
 							userData.EmplaceBackToPlayer(demandLogin.ID, demandLogin.PW, ptr->userIndex);
@@ -525,7 +532,7 @@ void IOCPServer::WorkerThreadFunction()
 						}
 						else if (failReason) {
 
-							std::cout << "회원가입에 실패했습니다.  해당 사유는 : " << failReason << std::endl;
+							//std::cout << "회원가입에 실패했습니다.  해당 사유는 : " << failReason << std::endl;
 
 							// 데이터 준비
 							ptr->dataBuffer = new FailLoginStruct(failReason);
@@ -555,7 +562,7 @@ void IOCPServer::WorkerThreadFunction()
 
 					if (failReasonBuffer)
 					{
-						std::cout << roomIndexBuffer << " 방으로의 입장을 실패했습니다. 실패 사유 : " << failReasonBuffer << endl;
+						//std::cout << roomIndexBuffer << " 방으로의 입장을 실패했습니다. 실패 사유 : " << failReasonBuffer << endl;
 
 						ptr->dataBuffer = new FailJoinRoomStruct(failReasonBuffer);
 
@@ -564,7 +571,7 @@ void IOCPServer::WorkerThreadFunction()
 					}
 					else
 					{
-						std::cout << roomIndexBuffer << " 번째 방으로의 입장을 성공했습니다. " << endl;
+						//std::cout << roomIndexBuffer << " 번째 방으로의 입장을 성공했습니다. " << endl;
 						
 						ptr->isHost = false;
 						ptr->roomIndex = roomIndexBuffer;
@@ -630,13 +637,17 @@ void IOCPServer::WorkerThreadFunction()
 				}
 				else
 				{
-					std::cout << "Not! Defined recvType Error  recvType == " << recvType << std::endl;
-					std::cout << "OMG!! this Thread Down!!" << std::endl;
+#ifdef _DEBUG
+					std::cout << "  [Server::Error] OMG! UnDefined recvType Error! This Client is Down!!  // Log : recvType == " << recvType << std::endl;
+#endif
 				}
 			}
 		}
 		else if (!(ptr->isRecvTrue))
 		{
+#ifdef _DEBUG
+			std::cout << "  [Server::Error] ... Ptr->isRecvTrue is not use!! " << std::endl;
+#endif
 		}
 	}
 }
@@ -655,8 +666,8 @@ void IOCPServer::SaveUserDataThreadFunction()
 
 	while (isOnSaveUserDataThread) {
 		Sleep(10000);
-		//지금 자야되니까 나중에 이거보면 
-		//isSaveOn == if문 함수 밖으로 뺴라 멍청아... 이걸 거따가 집어넣었네
+		//지금 자야되니까 나중에 이거보면;
+		//isSaveOn == if문 함수 밖으로 뺴라 멍청아... 조건문... 그걸 거따가 집어넣었네;;
 		userData.Save(isSaveOn);
 	}
 }
