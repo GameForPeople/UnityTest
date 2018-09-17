@@ -13,11 +13,11 @@ TagManager:
   - UI
   - 
   - 
-  - 
-  - 
-  - 
-  - 
-  - 
+  - BackGround
+  - Character
+  - Projectile
+  - Enemy
+  - EnemyProjectile
   - 
   - 
   - 
