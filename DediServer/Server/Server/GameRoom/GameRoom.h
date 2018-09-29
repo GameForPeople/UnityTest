@@ -13,23 +13,38 @@ enum class ROOM_STATE {
 };
 
 class GameRoom {
+	InGameDataStruct *clientData; //new InGameDataStruct[2];
+
 public:
 	ROOM_STATE roomState;
 	
 	//std::atomic<bool> isOnRenew[2]{ false };
-	int	userIndex[2]{};
+	int* userIndex;
 	bool isOnReady[2]{false}; //0이 Host, 1이 Guest
-	bool isOnExit{ false };	// 한 명이 나갈 경우! true로 처리해줌.
-
+	bool isOnExit{ false };	// 한 명이 나갈 경우! true로 처리해줌. 과연? 이걸 쓸 수 있을까
+	
+							
+							//
 	__inline GameRoom() : roomState(ROOM_STATE::ROOM_STATE_VOID)
 	{};
-	__inline ~GameRoom() = default;
+	//__inline ~GameRoom() = default;
+	__inline ~GameRoom() 
+	{
+		if (clientData != nullptr)
+		{
+			delete[]clientData;
+			delete[]userIndex;
+		}
+	}
 
 	__inline void CreateRoom(const int InHostIndex)
 	{
 		roomState = ROOM_STATE::ROOM_STATE_SOLO;
 		//isOnRenew[0] = true; // 방을 만드는 입장에서는 항상 0이 비어있어야함!
 		//이걸 여기다가 쓰지 말고, 데이터를 보내야 할때만 쓰자.
+		
+		clientData = new InGameDataStruct[2];
+		userIndex = new int[2];
 
 		userIndex[0] = InHostIndex;
 	}
@@ -44,10 +59,47 @@ public:
 		isOnReady[0] = true;
 		//}
 	}
+	
+	void SaveClientData(const InGameDataStruct& InStruct, const bool InIsHost)
+	{
+		if (InIsHost)
+		{
+			clientData[0].SetValues(InStruct);
+		}
+		else
+		{
+			clientData[1].SetValues(InStruct);
+		}
+	}
+
+	void GetClientData(const bool InIsHost, 
+		float& OutPosX, float& OutPosY, bool& OutInputLeft, bool& OutInputRight, 
+		bool& OutIsOnJump, bool& OutIsOnFire)
+	{
+		if (InIsHost)
+		{
+			clientData[1].GetValues(OutPosX, OutPosY, OutInputLeft, OutInputRight, OutIsOnJump, OutIsOnFire);
+		}
+		else
+		{
+			clientData[0].GetValues(OutPosX, OutPosY, OutInputLeft, OutInputRight, OutIsOnJump, OutIsOnFire);
+		}
+	}
+
+	InGameDataStruct* GetThis(const bool InIsHost)
+	{
+		if (InIsHost)
+		{
+			return clientData[1].GetThis();
+		}
+		else
+		{
+			return clientData[0].GetThis();
+		}
+	}
 };
 
 class CGameRoom {
-
 	std::vector<GameRoom> rooms;
 
 public:
@@ -140,5 +192,18 @@ public:
 			}
 			return false;
 		}
+	}
+
+	void SaveClientData(const int InRoomIndex, const bool InIsHost, const InGameDataStruct & InStruct)
+	{
+		rooms[InRoomIndex].SaveClientData(InStruct, InIsHost);
+	}
+
+	void GetClientData(const int InRoomIndex, const bool InIsHost,
+		float& OutPosX, float& OutPosY, bool& OutInputLeft, bool& OutInputRight,
+		bool& OutIsOnJump, bool& OutIsOnFire)
+	{
+		rooms[InRoomIndex].GetClientData(InIsHost,
+			OutPosX, OutPosY, OutInputLeft, OutInputRight, OutIsOnJump, OutIsOnFire);
 	}
 };

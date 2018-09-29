@@ -17,7 +17,8 @@
 // For Login
 #define		MAX_ID_LEN		12
 
-//#define SERVER_DEBUG_LOG_PRINT
+// for DebugBuild
+//#define SERVER_DEBUG_LOG_PRINT  // use #ifdef _DEBUG
 
 struct SOCKETINFO
 {
@@ -74,7 +75,6 @@ PauseThreadList
 
 class IOCPServer {
 private:
-	bool bIsPrintDebugMessage;
 
 	WSADATA wsa;
 	HANDLE hIOCP;
@@ -93,13 +93,7 @@ private:
 	int selfControl;
 
 public:
-	__inline IOCPServer() : bIsPrintDebugMessage(false)
-	{
-		Init();
-	}
-
-	__inline IOCPServer(bool InIsPrintDebugMessage) 
-		: bIsPrintDebugMessage(InIsPrintDebugMessage)
+	__inline IOCPServer()
 	{
 		Init();
 	}

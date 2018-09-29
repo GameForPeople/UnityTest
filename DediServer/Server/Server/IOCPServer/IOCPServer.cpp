@@ -614,11 +614,22 @@ void IOCPServer::WorkerThreadFunction()
 					float outPosX, outPosY;
 					bool outLeft, outRight, outJump, outFire;
 
-					roomData.GetClientData(ptr->roomIndex, ptr->isHost, 
+					roomData.GetClientData(ptr->roomIndex, ptr->isHost,
 						outPosX, outPosY, outLeft, outRight, outJump, outFire);
-					
-					ptr->dataBuffer = new InGameDataStruct(outPosX, outPosY, outLeft, outRight, outJump, outFire);
 
+					if (outJump || outFire)
+					{
+						if (ptr->isHost)
+						{
+							printf("Guest - X : %f , Y : %f , Left : %d , Right : %d , Jump : %d , Fire : %d \n", outPosX, outPosY, outLeft, outRight, outJump, outFire);
+						}
+						else
+						{
+							printf("Host - X : %f , Y : %f , Left : %d , Right : %d , Jump : %d , Fire : %d \n", outPosX, outPosY, outLeft, outRight, outJump, outFire);
+						}
+					}
+
+					ptr->dataBuffer = new InGameDataStruct(outPosX, outPosY, outLeft, outRight, outJump, outFire);
 					if (NETWORK_UTIL::SendProcess(ptr, sizeof(int) + sizeof(InGameDataStruct), RECV_GAMESTATE))
 						continue;
 				}

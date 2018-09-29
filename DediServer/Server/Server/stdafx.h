@@ -12,6 +12,8 @@
 #include <vector>
 #include <string>
 
+#include <string_view>
+
 //thread
 #include <thread>
 #include <atomic>

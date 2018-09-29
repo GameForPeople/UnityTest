@@ -27,11 +27,11 @@ public:
 	__inline UserData() {};
 
 	// 회원가입용! 바로 로그인됨!
-	__inline UserData(std::string InID, const int InPW) : m_id(InID), m_pw(InPW), m_winCount(0), m_loseCount(0), m_money(0), m_isLogin(true)
+	__inline UserData(const std::string InID, const int InPW) : m_id(InID), m_pw(InPW), m_winCount(0), m_loseCount(0), m_money(0), m_isLogin(true)
 	{ };
 
 	// Data Load 용! 로그인되지 않음!! 회원가입에 쓰면 안됌!!
-	__inline UserData(std::string InID, const int InPW, const int InWinCount, const int InloseCount, const int InMoney)
+	__inline UserData(const std::string InID, const int InPW, const int InWinCount, const int InloseCount, const int InMoney)
 		: m_id(InID), m_pw(InPW), m_winCount(InWinCount), m_loseCount(InloseCount), m_money(InMoney), m_isLogin(false)
 	{ };
 
@@ -123,7 +123,7 @@ public:
 		}
 	}
 
-	int SignIn(string InID, const int InPW, int& RetWinCount, int& RetLoseCount, int& RetMoney, int& RetIndex)
+	int SignIn(const string_view& InID, const int InPW, int& RetWinCount, int& RetLoseCount, int& RetMoney, int& RetIndex)
 	{
 		RetIndex = 0;
 		for (auto &i : player)
@@ -187,7 +187,7 @@ public:
 		return 1;
 	}
 
-	__inline int SignUp(string InID)
+	__inline int SignUp(const string_view& InID)
 	{
 		for (auto &i : player)
 		{

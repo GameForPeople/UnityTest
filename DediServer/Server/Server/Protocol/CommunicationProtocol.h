@@ -4,23 +4,35 @@
 #include "../stdafx.h"
 
 enum Protocol {
+	//for Server
 	END_SEND			=	-1	,
 	START_RECV			=	0	,
+	
+	// 1. LoginScene 
 	DEMAND_LOGIN		=	100	,
 	FAIL_LOGIN			=	101	,
 	PERMIT_LOGIN		=	102	,
+	
+	// 2. MainUIScene
+
+
+	// 3. LobbyScene 
 	DEMAND_MAKEROOM		=	301	,
 	PERMIT_MAKEROOM		=	302	,
 	DEMAND_JOINROOM		=	303	,
 	PERMIT_JOINROOM		=	304	,
 	FAIL_JOINROOM		=	305	,
+	
+	// 4. RoomScene
 	DEMAND_ROOMHOST		=	400	,
 	ROOMSTATE_VOID		=	410	,
 	ROOMSTATE_GUESTIN	=	411	,
+	
+	// 5. InGameScene
 	SEND_GAMESTATE		=	500	,
 	SEND_VOIDGAMESTATE	=	501	,
 	RECV_GAMESTATE		=	502	,
-	RECV_VOIDGAMESTATE	=	503	
+	RECV_VOIDGAMESTATE	=	503	,
 };
 
 enum class SCENE_NAME {
@@ -205,33 +217,31 @@ struct InGameDataStruct : public BaseStruct{
 	bool	isOnJump;
 	bool	isOnFire;
 
-	__inline InGameDataStruct() = default;
-	
-	__inline InGameDataStruct(float InPosX, float InPosY, bool IsOnLeft, bool IsOnRight, 
-		bool IsOnJump, bool IsOnFire)
+	// in RoomScene
+	__inline InGameDataStruct()
+		: posX(), posY(), isOnLeft(), isOnRight(), isOnJump(), isOnFire()
+	{}
+
+	__inline InGameDataStruct(const float InPosX, const float InPosY, const bool IsOnLeft, const bool IsOnRight, 
+		const bool IsOnJump, const bool IsOnFire)
+		: posX(InPosX), posY(InPosY), isOnLeft(IsOnLeft), isOnRight(IsOnRight), isOnJump(IsOnJump), isOnFire(IsOnFire)
 	{}
 
 	__inline ~InGameDataStruct() = default;
 
-	__inline void SetValues(const float InPosX, const float InPosY, const bool InIsOnLeft, const bool InIsOnRight, const bool InIsOnJump, const bool InIsOnFire)
-	{
-		posX = InPosX;
-		posY = InPosY;
-		isOnLeft = InIsOnLeft;
-		isOnRight = InIsOnRight;
+	//__inline void SetValues(const float InPosX, const float InPosY, const bool InIsOnLeft, const bool InIsOnRight, const bool InIsOnJump, const bool InIsOnFire)
+	//{
+	//	posX = InPosX;posY = InPosY;isOnLeft = InIsOnLeft;isOnRight = InIsOnRight;if (InIsOnJump)isOnJump = InIsOnJump;if (InIsOnFire)isOnFire = InIsOnFire;
+	//}
 
-		if (InIsOnJump)
-			isOnJump = InIsOnJump;
-
-		if (InIsOnFire)
-			isOnFire = InIsOnFire;
-	}
-	__inline void SetValues(InGameDataStruct InStruct)
+	__inline void SetValues(const InGameDataStruct& InStruct)
 	{
 		posX = InStruct.posX;
 		posY = InStruct.posY;
 		isOnLeft = InStruct.isOnLeft;
 		isOnRight = InStruct.isOnRight;
+
+		// 네트워크가 지연될 수 있으니 false는 반영하지 않습니다.
 
 		if (InStruct.isOnJump)
 			isOnJump = InStruct.isOnJump;
