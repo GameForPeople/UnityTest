@@ -104,7 +104,7 @@ public class NetworkManager : MonoBehaviour
     public byte[] DataRecvBuffer = new byte[100];
     public byte[] DataSendBuffer = new byte[8];
 
-    public byte[] inGameSceneDataBuffer = new byte[16];
+    public byte[] inGameSceneDataBuffer = new byte[50];
 
     public object _obj = new object();
 
@@ -292,7 +292,7 @@ public class NetworkManager : MonoBehaviour
         socket.Receive(DataRecvBuffer);
 
         recvType = BitConverter.ToInt32(DataRecvBuffer, 0);
-        Debug.Log("RecvType is : " + recvType);
+        //Debug.Log("RecvType is : " + recvType);
     }
 
     public void ProcessRecvData()
@@ -312,6 +312,7 @@ public class NetworkManager : MonoBehaviour
         {
 
         }
+
         else if (recvType == (int)PROTOCOL.FAIL_LOGIN)
         {
             GameObject.Find("LoginSceneManager").GetComponent<LoginSceneManager>().failReason = BitConverter.ToInt32(DataRecvBuffer, 4);
@@ -343,12 +344,8 @@ public class NetworkManager : MonoBehaviour
             roomIndex = BitConverter.ToInt32(DataRecvBuffer, 4);
 
             int idSizeBuffer = BitConverter.ToInt32(DataRecvBuffer, 8);
-            
             //enemyId = System.String.Empty;
             enemyId = Encoding.Default.GetString(DataRecvBuffer, 12, idSizeBuffer);
-
-            Debug.Log("받은 방장의 아이디는 " + enemyId + ", 크기는  " + idSizeBuffer+ " 입니다. ");
-            Debug.Log("복사한 방장의 아이디는 " + (char)DataRecvBuffer[12] + DataRecvBuffer[13] + DataRecvBuffer[14] + DataRecvBuffer[15] + "입니다. ");
 
             GameObject.Find("LobbySceneManager").GetComponent<LobbySceneManager>().PermitJoinRoom();
         }

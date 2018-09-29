@@ -10388,6 +10388,15 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 06aa2c14dd0195f438c810b1c87bda2e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  isLiveLocalPlayer: 1
+  isLiveNetworkPlayer: 1
+  isNetworkCoroutine: 1
+  outInputLeft: 1
+  outInputRight: 1
+  outIsJump: 1
+  outIsFire: 1
+  outCharX: 0
+  outCharY: 0
 --- !u!1 &1890710641
 GameObject:
   m_ObjectHideFlags: 0
@@ -10668,7 +10677,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4c72764d870f6244caedfbfb88c62687, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  ON_INSERT_FOR_TEST_PC_KEY: 1
+  ON_INSERT_FOR_TEST_PC_KEY: 0
   hp: 1
   dirLeftOrRightBuffer: 1
   realCharacterIndex: 2
@@ -10962,7 +10971,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4c72764d870f6244caedfbfb88c62687, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  ON_INSERT_FOR_TEST_PC_KEY: 1
+  ON_INSERT_FOR_TEST_PC_KEY: 0
   hp: 1
   dirLeftOrRightBuffer: 1
   realCharacterIndex: 1

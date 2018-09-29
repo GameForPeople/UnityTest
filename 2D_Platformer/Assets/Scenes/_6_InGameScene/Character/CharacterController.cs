@@ -44,12 +44,14 @@ public class CharacterController : MonoBehaviour {
 
     new Rigidbody2D rigidbody;
     GameObject networkManager;
-    GameObject inGameSceneManager;
+    public InGameSceneManager inGameSceneManager;
+    ProjectileController projectileController;
 
     // Use this for initialization
     void Start () {
         rigidbody = GetComponent<Rigidbody2D>();
-        inGameSceneManager = GameObject.Find("InGameSceneManager");
+        inGameSceneManager = GameObject.Find("InGameSceneManager").GetComponent<InGameSceneManager>();
+        projectileController = GameObject.Find("ProjectileController").GetComponent<ProjectileController>();
     }
 
     // Update is called once per frame
@@ -60,9 +62,11 @@ public class CharacterController : MonoBehaviour {
         }
     }
 
-    void InputProcess()
+    private void InputProcess()
     {
         InputLeftOrRight();
+        InputLeftOrRightProcess();
+
         InputJump();
         InputFire();
     }
@@ -79,7 +83,6 @@ public class CharacterController : MonoBehaviour {
             isOnLeft = isMobileOnLeft;
             isOnRight = isMobileOnRight;
         }
-        InputLeftOrRightProcess();
     }
 
     void InputLeftOrRightProcess()
@@ -115,6 +118,8 @@ public class CharacterController : MonoBehaviour {
         // 캐릭터 변환
         transform.localScale = new Vector3(dirLeftOrRightBuffer, 1, 1);
     }
+
+
 
     void InputJump()
     {
@@ -166,6 +171,7 @@ public class CharacterController : MonoBehaviour {
         }
     }
 
+
     // Update to rigidbody
     void FixedUpdate()
     {
@@ -184,6 +190,8 @@ public class CharacterController : MonoBehaviour {
         //transform.position = new Vector3(newPosX, transform.position.y, transform.position.z);
         rigidbody.MovePosition(transform.position + newMove);
     }
+
+
 
     // 함수쓰지 말고, 멤버 변수로 직접하자..
     //void SetIsControl(bool InIsOnCOntrol)
@@ -309,7 +317,18 @@ public class CharacterController : MonoBehaviour {
         isOnFire = true;
         networkFireBuffer = true;
 
-        inGameSceneManager.GetComponent<InGameSceneManager>().PlayerAttack(realCharacterIndex, dirLeftOrRightBuffer, transform.position);
+        //inGameSceneManager.PlayerAttackProcess(realCharacterIndex, dirLeftOrRightBuffer, posBuffer);
+        
+        // or 
+
+        if(realCharacterIndex == 1)
+        {
+           projectileController.GetComponent<ProjectileController>().AttackFireBall(dirLeftOrRightBuffer, transform.position);
+        }
+        else
+        {
+           projectileController.GetComponent<ProjectileController>().AttackLightBall(dirLeftOrRightBuffer, transform.position);
+        }
 
         yield return new WaitForSeconds(0.5f);
 

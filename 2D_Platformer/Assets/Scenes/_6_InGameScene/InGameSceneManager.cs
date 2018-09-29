@@ -8,10 +8,10 @@ public class InGameSceneManager : MonoBehaviour
     GameObject networkObject;
     GameObject hostCharacter;
     GameObject guestCharacter;
-    GameObject projectileController;
+    public GameObject projectileController;
     GameObject cameraController;
 
-    int localPlayerIndex = 1; // 1일 경우 Host, 2일 경우 Guest..! 자주써야하니까 
+    int localPlayerIndex; // 1일 경우 Host, 2일 경우 Guest..! 자주써야하니까 
 
     public bool isLiveLocalPlayer = true; // 로컬플레이어(내가) 죽었을 경우
     public bool isLiveNetworkPlayer = true; // 같이 하는 플레이어가 죽었을 경우
@@ -30,24 +30,34 @@ public class InGameSceneManager : MonoBehaviour
     void Start()
     {
         InitMemberObject();
+        //hostCharacter = GameObject.Find("HostCharacter");
+        //guestCharacter = GameObject.Find("GuestCharacter");
+        //projectileController = GameObject.Find("ProjectileController");
+        //cameraController = GameObject.Find("MainCamera");
 
         InitLocalPlayer();
+        //cameraController.GetComponent<InGameSceneCameraController>().SetTargetCharacter(1);
+        //hostCharacter.GetComponent<CharacterController>().isOnControl = true;
+        //localPlayerIndex = 1;
+
+        //for local Test
+        //isNetworkCoroutine = false;
 
         StartCoroutine(InGameNetworkFunction());
     }
 
-    void InitMemberObject()
+    private void InitMemberObject()
     {
         networkObject = GameObject.Find("GameCores").transform.Find("NetworkManager").gameObject;
         networkObject.GetComponent<NetworkManager>().inGameScenemanager = GameObject.Find("InGameSceneManager");
 
         hostCharacter = GameObject.Find("HostCharacter");
         guestCharacter = GameObject.Find("GuestCharacter");
-        projectileController = GameObject.Find("ProjectileController");
+        projectileController = GameObject.Find("ProjectileController"); 
         cameraController = GameObject.Find("MainCamera");
     }
 
-    void InitLocalPlayer()
+    private void InitLocalPlayer()
     {
         // 캐릭터 카메라 및 조작On 세팅
         if (networkObject.GetComponent<NetworkManager>().isHost)
@@ -64,12 +74,64 @@ public class InGameSceneManager : MonoBehaviour
         }
     }
 
-    public void PlayerAttack(int InConstCharacterIndex, int Indir, Vector3 InPosition)
+    IEnumerator InGameNetworkFunction()
     {
-        if(InConstCharacterIndex == 1)
-            projectileController.GetComponent<ProjectileController>().AttackFireBall(Indir, InPosition);
-        else if(InConstCharacterIndex == 2)
-            projectileController.GetComponent<ProjectileController>().AttackLightBall(Indir, InPosition);
+        while (isNetworkCoroutine)
+        {
+            if (isLiveLocalPlayer)
+            {
+                if (localPlayerIndex == 1)
+                {
+                    hostCharacter.GetComponent<CharacterController>().SendDataProcess(ref outCharX, ref outCharY, ref outInputLeft, ref outInputRight, ref outIsJump, ref outIsFire);
+                }
+                else
+                {
+                    guestCharacter.GetComponent<CharacterController>().SendDataProcess(ref outCharX, ref outCharY, ref outInputLeft, ref outInputRight, ref outIsJump, ref outIsFire);
+                }
+
+                networkObject.GetComponent<NetworkManager>().SendData((int)PROTOCOL.SEND_GAMESTATE);
+            }
+            else
+            {
+                networkObject.GetComponent<NetworkManager>().SendData((int)PROTOCOL.SEND_VOIDGAMESTATE);
+            }
+
+            yield return new WaitForSeconds(1.0f / 30.0f);
+        }
+    }
+
+    public void RecvDataProcess(float InPosX, float InPosY, bool InInputLeft, bool InInputRight, bool InIsJump, bool InIsFire )
+    {
+        if (InIsJump || InIsFire)
+        {
+            Debug.Log("X : " + InPosX + "   Y : " + InPosY);
+        }
+
+        if (localPlayerIndex == 1)
+        {
+            guestCharacter.GetComponent<CharacterController>().RecvDataProcess(InPosX, InPosY, InInputLeft, InInputRight, InIsJump, InIsFire);
+        }
+        else
+        {
+            hostCharacter.GetComponent<CharacterController>().RecvDataProcess(InPosX, InPosY, InInputLeft, InInputRight, InIsJump, InIsFire);
+        }
+    }
+
+
+
+
+    public void PlayerAttackProcess(int InConstCharacterIndex, int Indir, Vector2 InPosition)
+    {
+        if (InConstCharacterIndex == 1)
+        {
+           // projectileController.GetComponent<ProjectileController>().AttackFireBall(Indir, InPosition);
+        }
+        else if (InConstCharacterIndex == 2)
+        {
+           // projectileController.GetComponent<ProjectileController>().AttackLightBall(Indir, InPosition);
+        }
+
+        return;
     }
 
     public void BossAttack(int InType, Vector3 InBossPosition, int InDir)
@@ -96,6 +158,7 @@ public class InGameSceneManager : MonoBehaviour
             yield return new WaitForSeconds(0.3f);
         }
     }
+
 
     public void DeathLocalPlayer()
     {
@@ -142,41 +205,4 @@ public class InGameSceneManager : MonoBehaviour
         }
     }
 
-    IEnumerator InGameNetworkFunction()
-    {
-        while (isNetworkCoroutine)
-        {
-            if (isLiveLocalPlayer)
-            {
-                if (localPlayerIndex == 1)
-                {
-                    hostCharacter.GetComponent<CharacterController>().SendDataProcess(ref outCharX, ref outCharY, ref outInputLeft, ref outInputRight, ref outIsJump, ref outIsFire);
-                }
-                else
-                {
-                    guestCharacter.GetComponent<CharacterController>().SendDataProcess(ref outCharX, ref outCharY, ref outInputLeft, ref outInputRight, ref outIsJump, ref outIsFire);
-                }
-
-                networkObject.GetComponent<NetworkManager>().SendData((int)PROTOCOL.SEND_GAMESTATE);
-            }
-            else
-            {
-                networkObject.GetComponent<NetworkManager>().SendData((int)PROTOCOL.SEND_VOIDGAMESTATE);
-            }
-
-            yield return new WaitForSeconds(1.0f / 30.0f);
-        }
-    }
-
-    public void RecvDataProcess(float InPosX, float InPosY, bool InInputLeft, bool InInputRight, bool InIsJump, bool InIsFire )
-    {
-        if (localPlayerIndex == 1)
-        {
-            guestCharacter.GetComponent<CharacterController>().RecvDataProcess(InPosX, InPosY, InInputLeft, InInputRight, InIsJump, InIsFire);
-        }
-        else
-        {
-            hostCharacter.GetComponent<CharacterController>().RecvDataProcess(InPosX, InPosY, InInputLeft, InInputRight, InIsJump, InIsFire);
-        }
-    }
 }

@@ -67,6 +67,7 @@ public class RoomSceneManager : MonoBehaviour {
             yield return new WaitForSeconds(1.0f);
             --startCount;
         }
+
         GameObject.Find("GameCores").transform.Find("SceneControlManager").GetComponent<SceneControlManager>().ChangeScene(SCENE_NAME.INGAME_SCENE);
     }
 }

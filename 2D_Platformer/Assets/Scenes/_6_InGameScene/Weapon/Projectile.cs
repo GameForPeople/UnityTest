@@ -56,8 +56,10 @@ public class Projectile : MonoBehaviour
         rigidbody.MovePosition(transform.position + newMove);
     }
 
-    IEnumerator ProjectileCoroutine()
+    public IEnumerator ProjectileCoroutine()
     {
+        bool slowTime;
+
         yield return new WaitForSeconds(0.85f);
         
         TurnOff();
