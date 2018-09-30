@@ -33,6 +33,13 @@ enum Protocol {
 	SEND_VOIDGAMESTATE	=	501	,
 	RECV_GAMESTATE		=	502	,
 	RECV_VOIDGAMESTATE	=	503	,
+
+	NOTIFY_NETWORK_PLAYER_DEATH = 505,	// Server To client
+
+	NOTIFY_LOCAL_BOSS_DEATH = 506, // client to server
+	NOTIFY_NETWORK_BOSS_DEATH = 507,	// server to client WIn!!!!!!!!
+
+	NOTIFY_END_OF_GAME = 508 // Server to Client  lose!!!!!
 };
 
 enum class SCENE_NAME {

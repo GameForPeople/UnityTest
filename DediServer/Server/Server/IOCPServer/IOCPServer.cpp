@@ -1,4 +1,4 @@
-#include "stdafx.h"
+#include "../stdafx.h" //stdafx.h"
 #include "IOCPServer.h"
 
 namespace NETWORK_UTIL {
@@ -589,12 +589,17 @@ void IOCPServer::WorkerThreadFunction()
 				//RoomScene
 				else if (recvType == DEMAND_ROOMHOST) {
 					// 게스트가 들어왔을 때,
-					if (roomData.GetAndSetReadyData(ptr->roomIndex, ptr->isHost))
+					if (roomData.GetGameReady(ptr->roomIndex))
 					{
-						ptr->dataBuffer = new RoomStateGuestInStruct(userData.GetUserID(roomData.GetEnemyIndex(ptr->roomIndex, ptr->isHost)));
+						userData.TotalGameCount(ptr->userIndex, roomData.GetEnemyIndex(ptr->roomIndex, ptr->isHost));
 
+						ptr->dataBuffer = new RoomStateGuestInStruct(userData.GetUserID(roomData.GetEnemyIndex(ptr->roomIndex, ptr->isHost)));
 						//RoomStateGuestInStruct* a = static_cast<RoomStateGuestInStruct *>(ptr->dataBuffer);
 						//std::cout << "방장의 아이디는 " << a->enemyId << " 아이디의 크기는 " << a->idSize << "입니다." << endl;
+
+						std::cout << "[Notify] 게임을 시작합니다.  방번호 : " << ptr->roomIndex <<
+							"  ID 1 : " << userData.GetUserID(ptr->userIndex) <<
+							"  ID 2 : " << userData.GetUserID(roomData.GetEnemyIndex(ptr->roomIndex, ptr->isHost)) << "\n";
 
 						if (NETWORK_UTIL::SendProcess(ptr, sizeof(int) + sizeof(RoomStateGuestInStruct), ROOMSTATE_GUESTIN))
 							continue;
@@ -611,40 +616,89 @@ void IOCPServer::WorkerThreadFunction()
 				{
 					roomData.SaveClientData(ptr->roomIndex, ptr->isHost, (InGameDataStruct&)(ptr->buf[4]));
 					
-					float outPosX, outPosY;
-					bool outLeft, outRight, outJump, outFire;
-
-					roomData.GetClientData(ptr->roomIndex, ptr->isHost,
-						outPosX, outPosY, outLeft, outRight, outJump, outFire);
-
-					if (outJump || outFire)
+					if (roomData.GetNetworkPlayerIsLive(ptr->roomIndex, ptr->isHost))
 					{
-						if (ptr->isHost)
-						{
-							printf("Guest - X : %f , Y : %f , Left : %d , Right : %d , Jump : %d , Fire : %d \n", outPosX, outPosY, outLeft, outRight, outJump, outFire);
-						}
-						else
-						{
-							printf("Host - X : %f , Y : %f , Left : %d , Right : %d , Jump : %d , Fire : %d \n", outPosX, outPosY, outLeft, outRight, outJump, outFire);
-						}
-					}
+						float outPosX, outPosY;
+						bool outLeft, outRight, outJump, outFire;
 
-					ptr->dataBuffer = new InGameDataStruct(outPosX, outPosY, outLeft, outRight, outJump, outFire);
-					if (NETWORK_UTIL::SendProcess(ptr, sizeof(int) + sizeof(InGameDataStruct), RECV_GAMESTATE))
-						continue;
+						roomData.GetClientData(ptr->roomIndex, ptr->isHost,
+							outPosX, outPosY, outLeft, outRight, outJump, outFire);
+
+						//if (outJump || outFire)
+						//{
+						//	if (ptr->isHost)
+						//	{
+						//		printf("Guest - X : %f , Y : %f , Left : %d , Right : %d , Jump : %d , Fire : %d \n", outPosX, outPosY, outLeft, outRight, outJump, outFire);
+						//	}
+						//	else
+						//	{
+						//		printf("Host - X : %f , Y : %f , Left : %d , Right : %d , Jump : %d , Fire : %d \n", outPosX, outPosY, outLeft, outRight, outJump, outFire);
+						//	}
+						//}
+
+						ptr->dataBuffer = new InGameDataStruct(outPosX, outPosY, outLeft, outRight, outJump, outFire);
+						if (NETWORK_UTIL::SendProcess(ptr, sizeof(int) + sizeof(InGameDataStruct), RECV_GAMESTATE))
+							continue;
+					}
+					else
+					{
+						if (NETWORK_UTIL::SendProcess(ptr, sizeof(int), RECV_VOIDGAMESTATE))
+							continue;
+					}
 				}
 				else if (recvType == SEND_VOIDGAMESTATE)
 				{
-					float outPosX, outPosY;
-					bool outLeft, outRight, outJump, outFire;
+					roomData.PlayerDeath(ptr->roomIndex, ptr->isHost);
+					
+					if (int returnValueBuffer = roomData.GetEndOfGame(ptr->roomIndex); returnValueBuffer == 0)
+					{
+						float outPosX, outPosY;
+						bool outLeft, outRight, outJump, outFire;
 
-					roomData.GetClientData(ptr->roomIndex, ptr->isHost,
-						outPosX, outPosY, outLeft, outRight, outJump, outFire);
+						roomData.GetClientData(ptr->roomIndex, ptr->isHost,
+							outPosX, outPosY, outLeft, outRight, outJump, outFire);
 
-					ptr->dataBuffer = new InGameDataStruct(outPosX, outPosY, outLeft, outRight, outJump, outFire);
+						ptr->dataBuffer = new InGameDataStruct(outPosX, outPosY, outLeft, outRight, outJump, outFire);
 
-					if (NETWORK_UTIL::SendProcess(ptr, sizeof(int) + sizeof(InGameDataStruct), RECV_GAMESTATE))
-						continue;
+						if (NETWORK_UTIL::SendProcess(ptr, sizeof(int) + sizeof(InGameDataStruct), RECV_GAMESTATE))
+							continue;
+					}
+					else
+					{
+						if (returnValueBuffer == 1) 
+						{
+							isSaveOn = true;
+							std::cout << "[Notify] 보스가 사망하셨습니다.  방번호 : " << ptr->roomIndex << "\n";
+
+							roomData.ExitRoom(ptr->roomIndex);
+							
+							if (NETWORK_UTIL::SendProcess(ptr, sizeof(int), NOTIFY_NETWORK_BOSS_DEATH))
+								continue;
+						}
+						else if (returnValueBuffer == 2)
+						{
+							isSaveOn = true;
+
+							roomData.ExitRoom(ptr->roomIndex);
+							std::cout << "[Notify] 플레이어 모두가 사망하셨습니다.  방번호 : " << ptr->roomIndex << "\n";
+
+							if (NETWORK_UTIL::SendProcess(ptr, sizeof(int), NOTIFY_END_OF_GAME))
+								continue;
+						}
+					}
+				}
+				else if (recvType == NOTIFY_LOCAL_BOSS_DEATH)
+				{
+					roomData.BossDeath(ptr->roomIndex);
+					std::cout << "[Notify] 보스가 사망하셨습니다.  방번호 : " << ptr->roomIndex << "\n";
+
+					userData.GameResultWin(ptr->userIndex, roomData.GetEnemyIndex(ptr->roomIndex, ptr->isHost));
+
+					ptr->bufferProtocol = START_RECV;
+					ptr->isRecvTrue = true;
+					isSaveOn = true;
+
+					continue;
 				}
 				else
 				{

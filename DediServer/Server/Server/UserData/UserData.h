@@ -59,11 +59,13 @@ public:
 	__inline bool	GetIsLogin()  const { return m_isLogin; } 
 	__inline void	SetIsLogin(bool bValue) { m_isLogin = bValue; }
 
-	__inline void	SetWinOrLose(const int value) {
-		if (value == 1) { m_winCount++; }
-		else if (value == 2) { m_loseCount++; }
-		return;
-	}
+	//__inline void	SetWinOrLose(const int value) {
+	//	if (value == 1) { m_winCount++; }
+	//	else if (value == 2) { m_loseCount++; }
+	//	return;
+	//}
+	__inline void GameResultWin() { ++m_winCount; }
+	__inline void TotalGameCount() { ++m_loseCount; }
 };
 
 class CUserData {
@@ -214,7 +216,6 @@ public:
 		player[InUserIndex].SignOut();
 	}
 
-
 	__inline void EmplaceBackToPlayer(string InID, const int InPW, int& RetIndex) {
 		player.emplace_back(InID, InPW);
 		RetIndex = player.size() - 1;
@@ -232,4 +233,17 @@ public:
 	{
 		return player[InIndex].GetID();
 	}
+
+	void GameResultWin(const int InMyIndex, const int InNetworkIndex)
+	{
+		player[InMyIndex].GameResultWin();
+		player[InNetworkIndex].GameResultWin();
+	}
+
+	void TotalGameCount(const int InMyIndex, const int InNetworkIndex)
+	{
+		player[InMyIndex].TotalGameCount();
+		player[InNetworkIndex].TotalGameCount();
+	}
+
 };

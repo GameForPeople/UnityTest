@@ -20,13 +20,14 @@ public:
 	
 	//std::atomic<bool> isOnRenew[2]{ false };
 	int* userIndex;
-	bool isOnReady[2]{false}; //0이 Host, 1이 Guest
-	bool isOnExit{ false };	// 한 명이 나갈 경우! true로 처리해줌. 과연? 이걸 쓸 수 있을까
+	//bool isOnReady[2]{false}; //0이 Host, 1이 Guest
 	
-							
+	bool isDeathBoss{ false };	// 한 명이 나갈 경우! true로 처리해줌. 과연? 이걸 쓸 수 있을까
+	bool isLivePlayer[2];
 							//
 	__inline GameRoom() : roomState(ROOM_STATE::ROOM_STATE_VOID)
-	{};
+	{
+	};
 	//__inline ~GameRoom() = default;
 	__inline ~GameRoom() 
 	{
@@ -35,6 +36,13 @@ public:
 			delete[]clientData;
 			delete[]userIndex;
 		}
+	}
+
+	__inline void ExitRoom()
+	{
+		roomState = ROOM_STATE::ROOM_STATE_VOID;
+		delete[] clientData;
+		delete[] userIndex;
 	}
 
 	__inline void CreateRoom(const int InHostIndex)
@@ -47,17 +55,19 @@ public:
 		userIndex = new int[2];
 
 		userIndex[0] = InHostIndex;
+
+		isDeathBoss = false;
+
+		isLivePlayer[0] = true;
+		isLivePlayer[1] = true;
 	}
 
 	__inline void JoinRoom(const int InGuestIndex)
 	{
 		// 클라에서 JoinRoom하자마자, 클라자체 바로 로딩 들어가고, 호스트는 모르니까 On시켜줌
 		//if (roomState == ROOM_STATE::ROOM_STATE_SOLO) {
-		roomState = ROOM_STATE::ROOM_STATE_WAIT;
-
 		userIndex[1] = InGuestIndex;
-		isOnReady[0] = true;
-		//}
+		roomState = ROOM_STATE::ROOM_STATE_WAIT;
 	}
 	
 	void SaveClientData(const InGameDataStruct& InStruct, const bool InIsHost)
@@ -86,6 +96,27 @@ public:
 		}
 	}
 
+	bool GetGameReady()
+	{
+		if (roomState == ROOM_STATE::ROOM_STATE_WAIT)
+			return true;
+		
+		return false;
+	}
+
+	// 0 아직 안끝남, 1 승리, 2 실패
+	int GetEndOfGame()
+	{
+		if (isDeathBoss)
+			return 1;
+		else if (isLivePlayer[0] == false && isLivePlayer[1] == false)
+		{
+			//ExitRoom();
+			return 2;
+		}
+		else return 0;
+	}
+
 	InGameDataStruct* GetThis(const bool InIsHost)
 	{
 		if (InIsHost)
@@ -96,6 +127,30 @@ public:
 		{
 			return clientData[0].GetThis();
 		}
+	}
+
+	void SetDeathPlayer(const bool InIsHost)
+	{
+		if (InIsHost)
+		{
+			isLivePlayer[1] = false;
+		}
+		else
+		{
+			isLivePlayer[0] = false;
+		}
+	}
+	void SetBossDeath()
+	{
+		isDeathBoss = true;
+	}
+
+	bool GetNetworkPlayerIsLive(const bool InIsHost)
+	{
+		if (InIsHost)
+			return isLivePlayer[1];
+		else 
+			return isLivePlayer[0];
 	}
 };
 
@@ -116,7 +171,7 @@ public:
 
 	__inline ~CGameRoom() = default;
 
-	int CreateRoom(const int InHostIndex) {
+	int CreateRoom(const int& InHostIndex) {
 		for (int i = 0; i < ROOM_MAX; ++i) 
 		{
 			// 나중에 임계영역 걸어주긴 해야함.
@@ -129,7 +184,7 @@ public:
 		}
 	}
 
-	int JoinRoom(const int InGuestIndex, int& RetRoomIndex)
+	int JoinRoom(const int& InGuestIndex, int& RetRoomIndex)
 	{
 		if (RetRoomIndex == -1) 
 		{
@@ -164,7 +219,7 @@ public:
 		}
 	}
 
-	int GetEnemyIndex(const int InRoomIndex, const bool InIsHost) 
+	int GetEnemyIndex(const int& InRoomIndex, const bool InIsHost) 
 	{
 		if (InIsHost)
 			return rooms[InRoomIndex].userIndex[1];
@@ -172,29 +227,12 @@ public:
 			return rooms[InRoomIndex].userIndex[0];
 	}
 
-	__inline bool GetAndSetReadyData(const int InRoomIndex, const bool InIsHost)
+	__inline bool GetGameReady(const int& InRoomIndex)
 	{
-		if (InIsHost) 
-		{
-			if (rooms[InRoomIndex].isOnReady[0]) 
-			{
-				rooms[InRoomIndex].isOnReady[0] = false;
-				return true;
-			}
-			return false;
-		}
-		else
-		{
-			if (rooms[InRoomIndex].isOnReady[1])
-			{
-				rooms[InRoomIndex].isOnReady[1] = false;
-				return true;
-			}
-			return false;
-		}
+		return (rooms[InRoomIndex].GetGameReady());
 	}
 
-	void SaveClientData(const int InRoomIndex, const bool InIsHost, const InGameDataStruct & InStruct)
+	void SaveClientData(const int& InRoomIndex, const bool InIsHost, const InGameDataStruct & InStruct)
 	{
 		rooms[InRoomIndex].SaveClientData(InStruct, InIsHost);
 	}
@@ -205,5 +243,30 @@ public:
 	{
 		rooms[InRoomIndex].GetClientData(InIsHost,
 			OutPosX, OutPosY, OutInputLeft, OutInputRight, OutIsOnJump, OutIsOnFire);
+	}
+
+	void PlayerDeath(const int& InRoomIndex, const bool& InIsHost)
+	{
+		rooms[InRoomIndex].SetDeathPlayer(InIsHost);
+	}
+
+	void BossDeath(const int& InRoomIndex)
+	{
+		rooms[InRoomIndex].SetBossDeath();
+	}
+
+	int GetEndOfGame(const int& InRoonIndex)
+	{
+		return (rooms[InRoonIndex].GetEndOfGame());
+	}
+
+	void ExitRoom(const int& InRoomIndex)
+	{
+		rooms[InRoomIndex].ExitRoom();
+	}
+
+	bool GetNetworkPlayerIsLive(const int& InRoomIndex, const bool& InIsHost)
+	{
+		return rooms[InRoomIndex].GetNetworkPlayerIsLive(InIsHost);
 	}
 };
