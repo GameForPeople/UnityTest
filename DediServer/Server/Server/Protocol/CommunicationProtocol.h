@@ -53,7 +53,11 @@ enum class SCENE_NAME {
 
 // 기반 스트럭처
 struct BaseStruct {
-
+	BaseStruct() = default;
+	~BaseStruct() = default;
+private:
+	//BaseStruct(const BaseStruct&); // 메모리에서 강제로 변경하려면 어쩔수없이 주석처리
+	BaseStruct& operator=(const BaseStruct&);
 };
 
 //struct BaseSendStruct : public BaseStruct {
